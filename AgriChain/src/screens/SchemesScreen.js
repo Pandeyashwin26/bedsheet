@@ -10,6 +10,7 @@ import {
 import { ActivityIndicator, Appbar, Button, Card, Text } from 'react-native-paper';
 import * as Location from 'expo-location';
 import { COLORS } from '../theme/colors';
+import { useLanguage } from '../context/LanguageContext';
 import { CROP_OPTIONS } from '../data/agriOptions';
 
 const GOOGLE_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_API_KEY || '';
@@ -110,6 +111,7 @@ Use only real, active schemes. No markdown, just JSON.`;
 };
 
 export default function SchemesScreen({ navigation }) {
+    const { t } = useLanguage();
     const [state, setState] = useState('Maharashtra');
     const [selectedCrop, setSelectedCrop] = useState('Onion');
     const [schemes, setSchemes] = useState(MOCK_SCHEMES);
@@ -169,19 +171,19 @@ export default function SchemesScreen({ navigation }) {
                     <Text style={styles.benefitAmount}>{item.benefit_amount}</Text>
 
                     <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>पात्रता:</Text>
+                        <Text style={styles.detailLabel}>{t('schemes.eligibility')}</Text>
                         <Text style={styles.detailValue}>{item.eligibility}</Text>
                     </View>
 
                     <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>कैसे apply करें:</Text>
+                        <Text style={styles.detailLabel}>{t('schemes.howToApply')}</Text>
                         <Text style={styles.detailValue}>{item.how_to_apply}</Text>
                     </View>
 
                     {daysLeft !== null && daysLeft <= 30 ? (
                         <View style={styles.deadlineBox}>
                             <Text style={styles.deadlineText}>
-                                🔴 जल्दी करें — {daysLeft} दिन बचे हैं
+                            {t('schemes.deadline', { n: daysLeft })}
                             </Text>
                         </View>
                     ) : null}
@@ -195,7 +197,7 @@ export default function SchemesScreen({ navigation }) {
                             Linking.openURL(url);
                         }}
                     >
-                        अभी Apply करें →
+                        {t('schemes.applyNow')}
                     </Button>
                 </Card.Content>
             </Card>
@@ -207,7 +209,7 @@ export default function SchemesScreen({ navigation }) {
             <Appbar.Header style={styles.header}>
                 <Appbar.BackAction onPress={() => navigation.goBack()} />
                 <Appbar.Content
-                    title="सरकारी योजनाएं 🏛️"
+                    title={t('schemes.header')}
                     titleStyle={styles.headerTitle}
                 />
             </Appbar.Header>
@@ -215,7 +217,7 @@ export default function SchemesScreen({ navigation }) {
             <View style={styles.stateRow}>
                 <Text style={styles.stateLabel}>📍 {state}</Text>
                 {fromAI ? (
-                    <Text style={styles.aiLabel}>✨ AI-powered</Text>
+                    <Text style={styles.aiLabel}>{t('schemes.aiPowered')}</Text>
                 ) : null}
             </View>
 
@@ -250,7 +252,7 @@ export default function SchemesScreen({ navigation }) {
             {loading ? (
                 <View style={styles.loader}>
                     <ActivityIndicator size="large" color={COLORS.primary} />
-                    <Text style={styles.loaderText}>योजनाएं खोजी जा रही हैं...</Text>
+                    <Text style={styles.loaderText}>{t('schemes.loading')}</Text>
                 </View>
             ) : (
                 <FlatList

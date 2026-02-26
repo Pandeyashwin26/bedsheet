@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# AgriChain - Docker Compose Configuration
+# AGRI-मित्र - Docker Compose Configuration
 # ═══════════════════════════════════════════════════════════════════════════════
 #
 # Usage:
@@ -15,7 +15,7 @@ services:
     build:
       context: ./agrichain-backend
       dockerfile: Dockerfile
-    container_name: agrichain-api
+    container_name: agrimitra-api
     ports:
       - "8000:8000"
     environment:
@@ -24,11 +24,17 @@ services:
       - API_PORT=8000
       - LOG_LEVEL=INFO
       - LOG_JSON_FORMAT=false
+      - DATABASE_URL=postgresql://agrimitra:agrimitra@postgres:5432/agrimitra
+      - ETL_ENABLED=true
     env_file:
       - .env
     volumes:
       # Mount source for hot-reload in development
       - ./agrichain-backend:/app:ro
+      - ml-models:/app/ml/saved_models
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
       interval: 30s
@@ -37,8 +43,36 @@ services:
       start_period: 10s
     restart: unless-stopped
     networks:
-      - agrichain-network
+      - agrimitra-network
+
+  # ─── PostgreSQL Database ────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: agrimitra-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: agrimitra
+      POSTGRES_USER: agrimitra
+      POSTGRES_PASSWORD: agrimitra
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agrimitra -d agrimitra"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - agrimitra-network
 
 networks:
-  agrichain-network:
+  agrimitra-network:
     driver: bridge
+
+volumes:
+  pgdata:
+    driver: local
+  ml-models:
+    driver: local

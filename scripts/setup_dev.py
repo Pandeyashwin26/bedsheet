@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-AgriChain - Development Setup Script
+AGRI-मित्र - Development Setup Script
 ═══════════════════════════════════════════════════════════════════════════════
 
 Sets up the development environment for both backend and frontend.
@@ -109,7 +109,7 @@ def setup_env_files():
 
 
 def main():
-    print("🌾 AgriChain Development Setup")
+    print("🌾 AGRI-मित्र Development Setup")
     print("=" * 60)
 
     setup_env_files()

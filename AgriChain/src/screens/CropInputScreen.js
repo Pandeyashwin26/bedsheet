@@ -18,6 +18,7 @@ import {
   STORAGE_OPTIONS,
 } from '../data/agriOptions';
 import { COLORS } from '../theme/colors';
+import { useLanguage } from '../context/LanguageContext';
 
 const CROP_STAGE_OPTIONS = [
   {
@@ -112,6 +113,7 @@ const matchDistrictName = (geocode) => {
 };
 
 export default function CropInputScreen({ navigation }) {
+  const { t } = useLanguage();
   const [crop, setCrop] = useState('');
   const [cropStage, setCropStage] = useState('');
   const [district, setDistrict] = useState('');
@@ -216,7 +218,7 @@ export default function CropInputScreen({ navigation }) {
       <Appbar.Header style={styles.header}>
         <Appbar.BackAction onPress={() => navigation.goBack()} />
         <Appbar.Content
-          title="Tell us about your crop"
+          title={t('cropInput.header')}
           titleStyle={styles.headerTitle}
         />
       </Appbar.Header>
@@ -229,15 +231,15 @@ export default function CropInputScreen({ navigation }) {
         <Card style={styles.formCard}>
           <Card.Content>
             <PickerField
-              label="Select Crop"
-              placeholder="Choose a crop"
+              label={t('cropInput.selectCrop')}
+              placeholder={t('cropInput.chooseCrop')}
               value={crop}
               options={CROP_OPTIONS}
               onSelect={setCrop}
             />
 
             <View style={styles.fieldBlock}>
-              <Text style={styles.fieldLabel}>How is your crop right now?</Text>
+              <Text style={styles.fieldLabel}>{t('cropInput.cropCondition')}</Text>
               <View style={styles.stageRow}>
                 {CROP_STAGE_OPTIONS.map((item) => {
                   const selected = cropStage === item.value;
@@ -267,7 +269,7 @@ export default function CropInputScreen({ navigation }) {
             </View>
 
             {detectingLocation ? (
-              <Text style={styles.locationStatus}>Detecting your location...</Text>
+              <Text style={styles.locationStatus}>{t('cropInput.detecting')}</Text>
             ) : null}
 
             {autoDetectedDistrict && !showDistrictPicker ? (
@@ -280,15 +282,15 @@ export default function CropInputScreen({ navigation }) {
                   mode="text"
                   onPress={() => setDistrictManualEdit(true)}
                 >
-                  Edit
+                  {t('cropInput.edit')}
                 </Button>
               </View>
             ) : null}
 
             {showDistrictPicker ? (
               <PickerField
-                label="Your District"
-                placeholder="Choose district"
+                label={t('cropInput.yourDistrict')}
+                placeholder={t('cropInput.chooseDistrict')}
                 value={district}
                 options={DISTRICT_OPTIONS}
                 onSelect={setDistrict}
@@ -297,20 +299,20 @@ export default function CropInputScreen({ navigation }) {
 
             {locationDenied ? (
               <Text style={styles.permissionHint}>
-                Location permission denied. Please select district manually.
+                {t('cropInput.locationDenied')}
               </Text>
             ) : null}
 
             <PickerField
-              label="Soil Type"
-              placeholder="Choose soil"
+              label={t('cropInput.soilType')}
+              placeholder={t('cropInput.chooseSoil')}
               value={soilType}
               options={SOIL_OPTIONS}
               onSelect={setSoilType}
             />
 
             <View style={styles.fieldBlock}>
-              <Text style={styles.fieldLabel}>Sowing Date</Text>
+              <Text style={styles.fieldLabel}>{t('cropInput.sowingDate')}</Text>
               <Button
                 mode="outlined"
                 style={styles.pickerButton}
@@ -321,21 +323,21 @@ export default function CropInputScreen({ navigation }) {
                 contentStyle={styles.pickerButtonContent}
                 onPress={openDatePicker}
               >
-                {sowingDate ? formatDateForDisplay(sowingDate) : 'Select date'}
+                {sowingDate ? formatDateForDisplay(sowingDate) : t('cropInput.selectDate')}
               </Button>
             </View>
 
             <PickerField
-              label="Storage Type"
-              placeholder="Choose storage"
+              label={t('cropInput.storageType')}
+              placeholder={t('cropInput.chooseStorage')}
               value={storageType}
               options={STORAGE_OPTIONS}
               onSelect={setStorageType}
             />
 
             <View style={styles.sliderBlock}>
-              <Text style={styles.fieldLabel}>Transit time to mandi</Text>
-              <Text style={styles.transitValue}>{`${transitHours} hours`}</Text>
+              <Text style={styles.fieldLabel}>{t('cropInput.transitTime')}</Text>
+              <Text style={styles.transitValue}>{`${transitHours} ${t('common.hours')}`}</Text>
               <Slider
                 minimumValue={1}
                 maximumValue={48}
@@ -349,7 +351,7 @@ export default function CropInputScreen({ navigation }) {
             </View>
 
             <HelperText type="error" visible={submitted && !isValid}>
-              Please complete all fields before continuing.
+              {t('cropInput.completeFields')}
             </HelperText>
           </Card.Content>
         </Card>
@@ -361,7 +363,7 @@ export default function CropInputScreen({ navigation }) {
           buttonColor={COLORS.primary}
           onPress={handleSubmit}
         >
-          Get My Recommendation {'\u2192'}
+          {t('cropInput.getRecommendation')} {'\u2192'}
         </Button>
       </ScrollView>
     </View>

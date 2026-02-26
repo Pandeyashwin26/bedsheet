@@ -10,6 +10,7 @@ import {
   getMandiRecommendation,
 } from '../services/apiService';
 import { COLORS } from '../theme/colors';
+import { useLanguage } from '../context/LanguageContext';
 
 const defaultFormData = {
   crop: 'Onion',
@@ -62,6 +63,7 @@ function SkeletonCard({ title }) {
 }
 
 export default function RecommendationScreen({ navigation, route }) {
+  const { t } = useLanguage();
   const [expanded, setExpanded] = useState(true);
   const [harvestData, setHarvestData] = useState(null);
   const [mandiData, setMandiData] = useState(null);
@@ -193,7 +195,7 @@ export default function RecommendationScreen({ navigation, route }) {
     <View style={styles.screen}>
       <Appbar.Header style={styles.header}>
         <Appbar.BackAction onPress={() => navigation.goBack()} />
-        <Appbar.Content title="Recommendation" titleStyle={styles.headerTitle} />
+        <Appbar.Content title={t('recommendation.header')} titleStyle={styles.headerTitle} />
       </Appbar.Header>
 
       <ScrollView
@@ -208,12 +210,12 @@ export default function RecommendationScreen({ navigation, route }) {
         ) : null}
 
         {isPendingBoth || loadingHarvest ? (
-          <SkeletonCard title={'\u{1F5D3}\uFE0F Best Harvest Window'} />
+          <SkeletonCard title={t('recommendation.harvestWindow')} />
         ) : (
           <Card style={styles.card}>
             <View style={[styles.cardHeader, styles.harvestHeader]}>
               <Text style={styles.cardHeaderText}>
-                {'\u{1F5D3}\uFE0F Best Harvest Window'}
+                {t('recommendation.harvestWindow')}
               </Text>
             </View>
             <Card.Content style={styles.cardBody}>
@@ -229,26 +231,26 @@ export default function RecommendationScreen({ navigation, route }) {
         )}
 
         {isPendingBoth || loadingMandi ? (
-          <SkeletonCard title={'\u{1F3EA} Best Mandi'} />
+          <SkeletonCard title={t('recommendation.bestMandi')} />
         ) : (
           <Card style={styles.card}>
             <View style={[styles.cardHeader, styles.marketHeader]}>
               <Text style={styles.cardHeaderText}>
-                {`\u{1F3EA} Sell at ${mandiData?.best_mandi || 'Best Mandi'}`}
+                {`\u{1F3EA} ${t('recommendation.sellAt')} ${mandiData?.best_mandi || t('recommendation.bestMandi')}`}
               </Text>
             </View>
             <Card.Content style={styles.cardBody}>
               <Text style={styles.priceRange}>
                 {`${formatCurrency(mandiData?.expected_price_range?.[0])} — ${formatCurrency(
                   mandiData?.expected_price_range?.[1]
-                )} per quintal`}
+                )} ${t('common.perQuintal')}`}
               </Text>
               <Text style={styles.marketMeta}>
-                {`\u{1F69B} Est. transport: ${formatCurrency(mandiData?.transport_cost)}`}
+                {`${t('recommendation.transportCost', { cost: formatCurrency(mandiData?.transport_cost) })}`}
               </Text>
               <View style={styles.profitBox}>
                 <Text style={styles.profitLine}>
-                  {`Local sale \u2192 ${formatCurrency(
+                  {`${t('recommendation.localSale')} \u2192 ${formatCurrency(
                     mandiData?.net_profit_comparison?.local_mandi
                   )}`}
                 </Text>
@@ -269,7 +271,7 @@ export default function RecommendationScreen({ navigation, route }) {
             onPress={() => setExpanded((prev) => !prev)}
             style={styles.whyHeaderRow}
           >
-            <Text style={styles.whyTitle}>{'\u{1F50D} Why we recommend this'}</Text>
+            <Text style={styles.whyTitle}>{t('recommendation.whyRecommend')}</Text>
             <MaterialCommunityIcons
               name={expanded ? 'chevron-up' : 'chevron-down'}
               size={24}
@@ -281,7 +283,7 @@ export default function RecommendationScreen({ navigation, route }) {
               {loadingWhy ? (
                 <View style={styles.whyLoader}>
                   <ActivityIndicator animating color={COLORS.primary} />
-                  <Text style={styles.loaderText}>Loading explainability reasons...</Text>
+                  <Text style={styles.loaderText}>{t('recommendation.loadingReasons')}</Text>
                 </View>
               ) : (
                 <>
@@ -303,7 +305,7 @@ export default function RecommendationScreen({ navigation, route }) {
           buttonColor="#8D6E63"
           onPress={openSpoilageRisk}
         >
-          {'\u{1F4E6} Check Spoilage Risk'}
+          {t('recommendation.checkSpoilage')}
         </Button>
       </ScrollView>
 

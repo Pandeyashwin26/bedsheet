@@ -1,5 +1,5 @@
 """
-AgriChain Error Handling
+AGRI-मित्र Error Handling
 ═══════════════════════════════════════════════════════════════════════════════
 
 Centralized exception handling with structured error responses.
@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from core.logging import get_logger
 
-logger = get_logger("agrichain.errors")
+logger = get_logger("agrimitra.errors")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -45,8 +45,8 @@ class ErrorResponse(BaseModel):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-class AgriChainException(Exception):
-    """Base exception for AgriChain application."""
+class AgriMitraException(Exception):
+    """Base exception for AGRI-मित्र application."""
 
     def __init__(
         self,
@@ -62,7 +62,7 @@ class AgriChainException(Exception):
         super().__init__(message)
 
 
-class ValidationError(AgriChainException):
+class ValidationError(AgriMitraException):
     """Raised when input validation fails."""
 
     def __init__(self, message: str, field: Optional[str] = None):
@@ -75,7 +75,7 @@ class ValidationError(AgriChainException):
         )
 
 
-class ExternalAPIError(AgriChainException):
+class ExternalAPIError(AgriMitraException):
     """Raised when an external API call fails."""
 
     def __init__(self, service: str, message: str):
@@ -86,7 +86,7 @@ class ExternalAPIError(AgriChainException):
         )
 
 
-class ServiceUnavailableError(AgriChainException):
+class ServiceUnavailableError(AgriMitraException):
     """Raised when a required service is unavailable."""
 
     def __init__(self, service: str, reason: str = "Service not configured"):
@@ -97,7 +97,7 @@ class ServiceUnavailableError(AgriChainException):
         )
 
 
-class RateLimitExceededError(AgriChainException):
+class RateLimitExceededError(AgriMitraException):
     """Raised when rate limit is exceeded."""
 
     def __init__(self):
@@ -108,7 +108,7 @@ class RateLimitExceededError(AgriChainException):
         )
 
 
-class NotFoundError(AgriChainException):
+class NotFoundError(AgriMitraException):
     """Raised when a resource is not found."""
 
     def __init__(self, resource: str, identifier: str):
@@ -124,10 +124,10 @@ class NotFoundError(AgriChainException):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-async def agrichain_exception_handler(
-    request: Request, exc: AgriChainException
+async def agrimitra_exception_handler(
+    request: Request, exc: AgriMitraException
 ) -> JSONResponse:
-    """Handle AgriChain custom exceptions."""
+    """Handle AGRI-मित्र custom exceptions."""
     logger.warning(
         "Application error",
         error_code=exc.error_code,
@@ -229,7 +229,7 @@ def register_exception_handlers(app) -> None:
     """Register all exception handlers with the FastAPI app."""
     from pydantic import ValidationError as PydanticValidationError
 
-    app.add_exception_handler(AgriChainException, agrichain_exception_handler)
+    app.add_exception_handler(AgriMitraException, agrimitra_exception_handler)
     app.add_exception_handler(HTTPException, http_exception_handler)
     app.add_exception_handler(PydanticValidationError, validation_exception_handler)
     app.add_exception_handler(Exception, generic_exception_handler)

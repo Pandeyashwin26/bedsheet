@@ -6,4 +6,5 @@ export const COLORS = {
   text: '#1A1A1A',
   warning: '#E63946',
   safe: '#2DC653',
+  chain: '#7B2FBE',
 };

@@ -1,5 +1,5 @@
 """
-AgriChain API Routers
+AGRI-मित्र API Routers
 ═══════════════════════════════════════════════════════════════════════════════
 
 FastAPI router modules for all API endpoints.

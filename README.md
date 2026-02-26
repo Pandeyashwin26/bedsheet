@@ -1,8 +1,8 @@
-# 🌾 AgriChain
+# 🌾 AGRI-मित्र
 
 > **AI-Powered Post-Harvest Advisory System for Indian Farmers**
 
-AgriChain is a comprehensive agricultural technology solution that helps Indian farmers make informed decisions about harvest timing, market selection, storage, and crop health management. The system combines real-time market data, weather intelligence, and AI-powered predictions to maximize farmer profits while minimizing post-harvest losses.
+AGRI-मित्र is a comprehensive agricultural technology solution that helps Indian farmers make informed decisions about harvest timing, market selection, storage, and crop health management. The system combines real-time market data, weather intelligence, and AI-powered predictions to maximize farmer profits while minimizing post-harvest losses.
 
 ---
 
@@ -48,7 +48,7 @@ AgriChain is a comprehensive agricultural technology solution that helps Indian 
 
 ```
 agrichain/
-├── AgriChain/              # React Native Expo Mobile App
+├── AgriChain/              # React Native Expo Mobile App (AGRI-मित्र)
 │   ├── src/
 │   │   ├── components/     # Reusable UI components
 │   │   ├── screens/        # App screens
@@ -58,7 +58,7 @@ agrichain/
 │   ├── assets/             # Images and fonts
 │   └── App.js              # App entry point
 │
-├── agrichain-backend/      # FastAPI Python Backend
+├── agrichain-backend/      # FastAPI Python Backend (AGRI-मित्र API)
 │   ├── core/               # Core modules (config, logging, errors)
 │   ├── routers/            # API endpoints
 │   ├── services/           # External API integrations

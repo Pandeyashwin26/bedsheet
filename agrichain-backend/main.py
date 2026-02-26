@@ -1,5 +1,5 @@
 """
-AgriChain Backend — Production FastAPI Application
+AGRI-मित्र Backend — Production FastAPI Application
 ═══════════════════════════════════════════════════════════════════════════════
 
 AI-powered post-harvest advisory system for Indian farmers.
@@ -28,10 +28,18 @@ from routers.weather import router as weather_router
 from routers.market import router as market_router
 from routers.disease import router as disease_router
 from routers.schemes import router as schemes_router
+from routers.intelligence import router as intelligence_router
+from routers.auth import router as auth_router
+
+# Database & ETL
+from db.session import init_db
+from db.seed import run_all_seeds
+from etl.scheduler import ETLScheduler
+from sqlalchemy import text
 
 # Initialize logging
 setup_logging()
-logger = get_logger("agrichain.main")
+logger = get_logger("agrimitra.main")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -43,7 +51,7 @@ logger = get_logger("agrichain.main")
 async def lifespan(app: FastAPI):
     """Application lifespan — startup and shutdown hooks."""
     logger.info(
-        "AgriChain API starting",
+        "AGRI-मित्र API starting",
         environment=settings.environment,
         host=settings.api_host,
         port=settings.api_port,
@@ -55,9 +63,49 @@ async def lifespan(app: FastAPI):
         emoji = "✅" if status == "active" else "⚠️"
         logger.info(f"   {service.capitalize()}: {emoji} {status}")
 
+    # ─── Database Initialization ──────────────────────────────────────────
+    try:
+        logger.info("Initializing database...")
+        init_db()
+        logger.info("✅ Database tables created/verified")
+
+        # Seed baseline data (crops, soil profiles, transport routes)
+        from db.session import SessionLocal
+        seed_db = SessionLocal()
+        try:
+            run_all_seeds(seed_db)
+            logger.info("✅ Seed data loaded")
+        finally:
+            seed_db.close()
+    except Exception as exc:
+        logger.error(f"⚠️ Database init failed: {exc}. Running without DB.",
+                      exc_info=True)
+
+    # ─── ETL Scheduler ────────────────────────────────────────────────────
+    etl_scheduler = None
+    if settings.etl_enabled:
+        try:
+            from db.session import SessionLocal as ETLSession
+            etl_db = ETLSession()
+            etl_scheduler = ETLScheduler(etl_db)
+            etl_scheduler.start()
+            logger.info("✅ ETL scheduler started")
+
+            # Run initial sync if tables are empty
+            await etl_scheduler.run_initial_sync()
+            logger.info("✅ Initial ETL sync complete")
+        except Exception as exc:
+            logger.warning(f"⚠️ ETL scheduler failed to start: {exc}",
+                           exc_info=True)
+
     yield
 
-    logger.info("AgriChain API shutting down")
+    # ─── Shutdown ─────────────────────────────────────────────────────────
+    if etl_scheduler:
+        etl_scheduler.stop()
+        logger.info("ETL scheduler stopped")
+
+    logger.info("AGRI-मित्र API shutting down")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -69,7 +117,7 @@ def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
 
     app = FastAPI(
-        title="AgriChain API",
+        title="AGRI-मित्र API",
         description=(
             "AI-powered post-harvest advisory system for Indian farmers.\n\n"
             "## Features\n"
@@ -105,7 +153,9 @@ def create_app() -> FastAPI:
     # ─── Register Routers ─────────────────────────────────────────────────────
     api_prefix = "/api/v1" if settings.is_production else ""
 
+    app.include_router(auth_router, prefix=api_prefix)
     app.include_router(predict_router, prefix=api_prefix)
+    app.include_router(intelligence_router, prefix=api_prefix)
     app.include_router(weather_router, prefix=api_prefix)
     app.include_router(market_router, prefix=api_prefix)
     app.include_router(disease_router, prefix=api_prefix)
@@ -127,7 +177,7 @@ app = create_app()
 def root() -> Dict[str, str]:
     """Root endpoint with API information."""
     return {
-        "name": "AgriChain API",
+        "name": "AGRI-मित्र API",
         "version": "1.0.0",
         "status": "running",
         "environment": settings.environment,
@@ -142,12 +192,26 @@ def health_check() -> Dict[str, Any]:
 
     Returns service status and configuration state.
     """
+    # Check DB connectivity
+    db_status = "unknown"
+    try:
+        from db.session import SessionLocal
+        test_db = SessionLocal()
+        test_db.execute(text("SELECT 1"))
+        test_db.close()
+        db_status = "connected"
+    except Exception:
+        db_status = "disconnected"
+
+    services = settings.get_api_status()
+    services["database"] = db_status
+
     return {
         "status": "healthy",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "version": "1.0.0",
         "environment": settings.environment,
-        "services": settings.get_api_status(),
+        "services": services,
     }
 
 

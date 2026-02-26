@@ -16,6 +16,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../theme/colors';
+import { useLanguage } from '../context/LanguageContext';
 import {
   fetchAriaReply,
   getAriaFallbackReply,
@@ -101,6 +102,7 @@ function MessageBubble({ message, onReplay, onQuickReply }) {
 }
 
 export default function ARIAScreen({ route }) {
+  const { t: tr } = useLanguage();
   const listRef = useRef(null);
   const recordingRef = useRef(null);
   const messagesRef = useRef([]);
@@ -423,14 +425,14 @@ export default function ARIAScreen({ route }) {
             <Animated.View style={[styles.waveBar, { height: waveBarTwo }]} />
             <Animated.View style={[styles.waveBar, { height: waveBarThree }]} />
           </View>
-          <Text style={styles.speakingHint}>Tap anywhere to stop voice</Text>
+          <Text style={styles.speakingHint}>{tr('aria.speakingOverlay')}</Text>
         </Pressable>
       ) : null}
 
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>{'\u{1F33E} ARIA'}</Text>
-          <Text style={styles.headerSubtitle}>{'आपकी खेती सहायक'}</Text>
+          <Text style={styles.headerSubtitle}>{tr('aria.subtitle')}</Text>
         </View>
         <View style={styles.languagePills}>
           {LANGUAGE_OPTIONS.map((option) => (
@@ -465,7 +467,7 @@ export default function ARIAScreen({ route }) {
       >
         {messages.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>Start by asking ARIA</Text>
+            <Text style={styles.emptyTitle}>{tr('aria.emptyTitle')}</Text>
             {suggestedQuestions.map((question) => (
               <TouchableOpacity
                 key={question}
@@ -498,7 +500,7 @@ export default function ARIAScreen({ route }) {
             style={styles.input}
             value={inputText}
             onChangeText={setInputText}
-            placeholder="Type your farming question..."
+            placeholder={tr('aria.inputPlaceholder')}
             placeholderTextColor="#7B8A95"
             multiline
             onSubmitEditing={() => sendUserMessage(inputText)}

@@ -12,6 +12,7 @@ import { Appbar, Button, Card, Menu, Text, ActivityIndicator } from 'react-nativ
 import Svg, { Circle } from 'react-native-svg';
 import { CROP_OPTIONS, STORAGE_OPTIONS } from '../data/agriOptions';
 import { COLORS } from '../theme/colors';
+import { useLanguage } from '../context/LanguageContext';
 import { formatCurrency, getSpoilageRisk } from '../services/apiService';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -94,6 +95,7 @@ const actionBadgeStyle = (rank) => {
 };
 
 export default function SpoilageScreen({ navigation, route }) {
+  const { t } = useLanguage();
   const prefill = route?.params?.prefill || {};
   const source = route?.params?.source;
   const initialCrop = prefill.crop || CROP_OPTIONS[0];
@@ -247,7 +249,7 @@ export default function SpoilageScreen({ navigation, route }) {
     <View style={styles.screen}>
       <Appbar.Header style={styles.header}>
         <Appbar.BackAction onPress={() => navigation.goBack()} />
-        <Appbar.Content title="Spoilage Risk Checker" titleStyle={styles.headerTitle} />
+        <Appbar.Content title={t('spoilage.header')} titleStyle={styles.headerTitle} />
       </Appbar.Header>
 
       <ScrollView
@@ -263,23 +265,23 @@ export default function SpoilageScreen({ navigation, route }) {
 
         <Card style={styles.card}>
           <Card.Content style={styles.cardContent}>
-            <Text style={styles.sectionTitle}>Input</Text>
+            <Text style={styles.sectionTitle}>{t('spoilage.inputSection')}</Text>
             {source === 'recommendation' ? (
               <Text style={styles.prefillText}>
-                Auto-filled from your recommendation details.
+                {t('spoilage.prefillNote')}
               </Text>
             ) : null}
 
             <PickerField
-              label="Crop type"
+              label={t('spoilage.cropType')}
               value={crop}
               options={CROP_OPTIONS}
               onSelect={setCrop}
             />
 
             <View style={styles.fieldBlock}>
-              <Text style={styles.fieldLabel}>Days since harvest</Text>
-              <Text style={styles.sliderValue}>{`${daysSinceHarvest} days`}</Text>
+              <Text style={styles.fieldLabel}>{t('spoilage.daysSinceHarvest')}</Text>
+              <Text style={styles.sliderValue}>{`${daysSinceHarvest} ${t('common.days')}`}</Text>
               <Slider
                 minimumValue={0}
                 maximumValue={30}
@@ -293,15 +295,15 @@ export default function SpoilageScreen({ navigation, route }) {
             </View>
 
             <PickerField
-              label="Storage type"
+              label={t('spoilage.storageType')}
               value={storageType}
               options={STORAGE_OPTIONS}
               onSelect={setStorageType}
             />
 
             <View style={styles.fieldBlock}>
-              <Text style={styles.fieldLabel}>Transit time to mandi</Text>
-              <Text style={styles.sliderValue}>{`${transitHours} hours`}</Text>
+              <Text style={styles.fieldLabel}>{t('spoilage.transitTime')}</Text>
+              <Text style={styles.sliderValue}>{`${transitHours} ${t('common.hours')}`}</Text>
               <Slider
                 minimumValue={1}
                 maximumValue={48}
@@ -326,7 +328,7 @@ export default function SpoilageScreen({ navigation, route }) {
               onPress={runSpoilageCheck}
               disabled={loadingRisk}
             >
-              Check Spoilage Risk
+              {t('spoilage.checkRisk')}
             </Button>
           </Card.Content>
         </Card>
@@ -335,7 +337,7 @@ export default function SpoilageScreen({ navigation, route }) {
           <Card style={styles.card}>
             <Card.Content style={styles.loaderContent}>
               <ActivityIndicator animating size="large" color={COLORS.primary} />
-              <Text style={styles.loaderText}>Calculating spoilage risk...</Text>
+              <Text style={styles.loaderText}>{t('spoilage.calculating')}</Text>
             </Card.Content>
           </Card>
         ) : null}
@@ -343,7 +345,7 @@ export default function SpoilageScreen({ navigation, route }) {
         {riskResponse ? (
           <Card style={styles.card}>
             <Card.Content style={styles.cardContent}>
-              <Text style={styles.sectionTitle}>Risk Meter</Text>
+              <Text style={styles.sectionTitle}>{t('spoilage.riskMeter')}</Text>
 
               <View style={styles.meterWrap}>
                 <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE}>
@@ -393,7 +395,7 @@ export default function SpoilageScreen({ navigation, route }) {
         {riskResponse ? (
           <Card style={styles.card}>
             <Card.Content style={styles.cardContent}>
-              <Text style={styles.sectionTitle}>Preservation Actions</Text>
+              <Text style={styles.sectionTitle}>{t('spoilage.preservationActions')}</Text>
               {actions.map((item) => {
                 const style = actionBadgeStyle(item.rank);
                 return (
@@ -428,7 +430,7 @@ export default function SpoilageScreen({ navigation, route }) {
         {riskResponse && riskFactors.length > 0 ? (
           <Card style={styles.card}>
             <Card.Content style={styles.cardContent}>
-              <Text style={styles.sectionTitle}>Risk Factors</Text>
+              <Text style={styles.sectionTitle}>{t('spoilage.riskFactors')}</Text>
               {riskFactors.map((factor) => (
                 <View key={factor} style={styles.factorRow}>
                   <Text style={styles.factorBullet}>{'\u2022'}</Text>

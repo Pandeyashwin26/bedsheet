@@ -1,11 +1,11 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# AgriChain API - Production Dockerfile
+# AGRI-मित्र API - Production Dockerfile
 # ═══════════════════════════════════════════════════════════════════════════════
 #
 # Multi-stage build for optimized production image
 #
-# Build: docker build -t agrichain-api .
-# Run:   docker run -p 8000:8000 --env-file .env agrichain-api
+# Build: docker build -t agrimitra-api .
+# Run:   docker run -p 8000:8000 --env-file .env agrimitra-api
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # ─── Stage 1: Builder ─────────────────────────────────────────────────────────
@@ -35,8 +35,8 @@ FROM python:3.11-slim as production
 WORKDIR /app
 
 # Create non-root user for security
-RUN groupadd --gid 1000 agrichain && \
-    useradd --uid 1000 --gid agrichain --shell /bin/bash --create-home agrichain
+RUN groupadd --gid 1000 agrimitra && \
+    useradd --uid 1000 --gid agrimitra --shell /bin/bash --create-home agrimitra
 
 # Copy virtualenv from builder
 COPY --from=builder /opt/venv /opt/venv
@@ -48,10 +48,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONFAULTHANDLER=1
 
 # Copy application code
-COPY --chown=agrichain:agrichain . .
+COPY --chown=agrimitra:agrimitra . .
 
 # Switch to non-root user
-USER agrichain
+USER agrimitra
 
 # Expose port
 EXPOSE 8000

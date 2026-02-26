@@ -13,6 +13,7 @@ import { LineChart } from 'react-native-chart-kit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { COLORS } from '../theme/colors';
+import { useLanguage } from '../context/LanguageContext';
 import {
   BEST_SELLING_PERIOD,
   CROP_EMOJIS,
@@ -24,10 +25,11 @@ import {
 import { API_BASE_URL } from '../services/apiService';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const CACHE_KEY = 'agrichain_market_cache';
+const CACHE_KEY = 'agrimitra_market_cache';
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 export default function MarketScreen() {
+  const { t } = useLanguage();
   const [selectedDistrict, setSelectedDistrict] = useState('Nashik');
   const [selectedCrop, setSelectedCrop] = useState(null);
   const [expandedCrop, setExpandedCrop] = useState(null);
@@ -162,18 +164,18 @@ export default function MarketScreen() {
           <View style={styles.priceCol}>
             <Text style={styles.priceValue}>₹{item.price}/kg</Text>
             <Text style={[styles.priceChange, { color: changeColor }]}>
-              {changeArrow} {item.change >= 0 ? '+' : ''}₹{item.change} today
+              {changeArrow} {item.change >= 0 ? '+' : ''}₹{item.change} {t('common.today')}
             </Text>
           </View>
           <View style={styles.mandiCol}>
             <Text style={styles.mandiName}>{item.mandi}</Text>
-            <Text style={styles.mandiUpdate}>आज अपडेट</Text>
+            <Text style={styles.mandiUpdate}>{t('market.todayUpdate')}</Text>
           </View>
         </View>
 
         {isExpanded && chartData.length > 0 ? (
           <View style={styles.chartSection}>
-            <Text style={styles.chartTitle}>30-दिन का भाव चार्ट</Text>
+            <Text style={styles.chartTitle}>{t('market.chart30Day')}</Text>
             <LineChart
               data={{
                 labels: chartLabels,
@@ -218,7 +220,7 @@ export default function MarketScreen() {
     <View style={styles.screen}>
       <Appbar.Header style={styles.header}>
         <Appbar.Content
-          title="आज के मंडी भाव 📊"
+          title={t('market.header')}
           titleStyle={styles.headerTitle}
         />
       </Appbar.Header>
@@ -226,8 +228,8 @@ export default function MarketScreen() {
       {lastUpdated ? (
         <View style={styles.updateRow}>
           <Text style={styles.updateText}>
-            Last updated: {lastUpdated.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-            {dataSource === 'api' ? ' • Live' : dataSource === 'cache' ? ' • Cached' : ' • Offline'}
+            {t('common.lastUpdated')}: {lastUpdated.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+            {dataSource === 'api' ? ` • ${t('common.live')}` : dataSource === 'cache' ? ` • ${t('common.cached')}` : ` • ${t('common.offline')}`}
           </Text>
         </View>
       ) : null}
@@ -272,7 +274,7 @@ export default function MarketScreen() {
           onPress={() => setSelectedCrop(null)}
         >
           <Text style={[styles.filterPillText, !selectedCrop && styles.filterPillTextActive]}>
-            All
+            {t('common.all')}
           </Text>
         </TouchableOpacity>
         {CROPS.map((c) => (
@@ -314,7 +316,7 @@ export default function MarketScreen() {
         ListFooterComponent={
           <Card style={styles.neighborCard}>
             <Card.Content style={styles.neighborContent}>
-              <Text style={styles.neighborTitle}>👥 आस-पास के किसान</Text>
+              <Text style={styles.neighborTitle}>{t('market.neighborTitle')}</Text>
               <Text style={styles.neighborCount}>
                 इस हफ्ते {neighborInfo.district} में{' '}
                 <Text style={{ fontWeight: '800', color: neighborInfo.color }}>

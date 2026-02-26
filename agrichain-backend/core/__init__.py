@@ -1,5 +1,5 @@
 """
-AgriChain Core Module
+AGRI-मित्र Core Module
 ═══════════════════════════════════════════════════════════════════════════════
 
 Core functionality including configuration, logging, error handling,
@@ -8,7 +8,7 @@ and middleware.
 
 from core.config import Settings, get_settings, settings
 from core.exceptions import (
-    AgriChainException,
+    AgriMitraException,
     ExternalAPIError,
     NotFoundError,
     RateLimitExceededError,
@@ -29,7 +29,7 @@ __all__ = [
     "logger",
     "setup_logging",
     # Exceptions
-    "AgriChainException",
+    "AgriMitraException",
     "ExternalAPIError",
     "NotFoundError",
     "RateLimitExceededError",

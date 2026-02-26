@@ -1,5 +1,5 @@
 """
-AgriChain Logging Configuration
+AGRI-मित्र Logging Configuration
 ═══════════════════════════════════════════════════════════════════════════════
 
 Production-grade structured logging with support for both human-readable
@@ -73,7 +73,7 @@ def setup_logging() -> None:
     logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 
-def get_logger(name: str = "agrichain") -> structlog.BoundLogger:
+def get_logger(name: str = "agrimitra") -> structlog.BoundLogger:
     """Get a configured logger instance."""
     return structlog.get_logger(name)
 
@@ -82,7 +82,7 @@ class RequestLogger:
     """Middleware-compatible request logger."""
 
     def __init__(self):
-        self.logger = get_logger("agrichain.request")
+        self.logger = get_logger("agrimitra.request")
 
     def log_request(
         self,

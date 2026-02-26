@@ -29,7 +29,7 @@ if (!isExpoGo) {
 
 export const setupNotifications = async () => {
     if (isExpoGo) {
-        console.log('AgriChain: Push notifications are not available in Expo Go. Use a development build for full notification support.');
+        console.log('AGRI-मित्र: Push notifications are not available in Expo Go. Use a development build for full notification support.');
         return false;
     }
 
@@ -37,8 +37,8 @@ export const setupNotifications = async () => {
         const N = await getNotifications();
 
         if (Platform.OS === 'android') {
-            await N.setNotificationChannelAsync('agrichain-alerts', {
-                name: 'AgriChain Alerts',
+            await N.setNotificationChannelAsync('agrimitra-alerts', {
+                name: 'AGRI-मित्र Alerts',
                 importance: N.AndroidImportance.HIGH,
                 vibrationPattern: [0, 250, 250, 250],
                 lightColor: '#52B788',
@@ -78,7 +78,7 @@ const scheduleDemoNotifications = async () => {
     // T+60 seconds: Price alert
     await N.scheduleNotificationAsync({
         content: {
-            title: '🌾 AgriChain Alert',
+            title: '🌾 AGRI-मित्र Alert',
             body: 'Nashik मंडी में Onion का भाव आज 12% बढ़ा। बेचने का सही समय!',
             data: { type: 'price_alert' },
             sound: 'default',

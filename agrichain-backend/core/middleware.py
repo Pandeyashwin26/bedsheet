@@ -1,5 +1,5 @@
 """
-AgriChain Middleware
+AGRI-मित्र Middleware
 ═══════════════════════════════════════════════════════════════════════════════
 
 Production middleware stack including request logging, timing,
@@ -15,7 +15,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from core.logging import get_logger, request_logger
 
-logger = get_logger("agrichain.middleware")
+logger = get_logger("agrimitra.middleware")
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):

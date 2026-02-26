@@ -1,6 +1,6 @@
-# AgriChain
+# AGRI-मित्र
 
-AgriChain is a farmer decision-support platform with:
+AGRI-मित्र is a farmer decision-support platform with:
 - an Expo React Native mobile app (`AgriChain/`)
 - a FastAPI + ML backend (`agrichain-backend/`)
 

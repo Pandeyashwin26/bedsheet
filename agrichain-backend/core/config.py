@@ -1,5 +1,5 @@
 """
-AgriChain Backend Configuration
+AGRI-मित्र Backend Configuration
 ═══════════════════════════════════════════════════════════════════════════════
 
 Centralized settings management using Pydantic Settings.
@@ -36,11 +36,25 @@ class Settings(BaseSettings):
     # ─── CORS ─────────────────────────────────────────────────────────────────
     cors_origins: str = Field(default="*")
 
+    # ─── Database ─────────────────────────────────────────────────────────────
+    database_url: str = Field(
+        default="postgresql://agrimitra:agrimitra@localhost:5432/agrimitra"
+    )
+    db_pool_size: int = Field(default=5)
+    db_max_overflow: int = Field(default=10)
+
     # ─── External APIs ────────────────────────────────────────────────────────
     openweather_api_key: Optional[str] = Field(default=None)
     datagov_api_key: Optional[str] = Field(default=None)
     google_api_key: Optional[str] = Field(default=None)
     hf_token: Optional[str] = Field(default=None)
+
+    # ─── ETL Scheduling ───────────────────────────────────────────────────────
+    etl_enabled: bool = Field(default=True)
+    etl_mandi_cron_hour: int = Field(default=0)
+    etl_mandi_cron_minute: int = Field(default=30)
+    etl_weather_cron_hour: int = Field(default=1)
+    etl_weather_cron_minute: int = Field(default=30)
 
     # ─── Security ─────────────────────────────────────────────────────────────
     secret_key: str = Field(default="dev-secret-key-change-in-production")

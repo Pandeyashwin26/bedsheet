@@ -2,11 +2,11 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
- * AgriChain API Service
+ * AGRI-मित्र API Service
  * ═══════════════════════════════════════════════════════════════════════════════
  *
  * Production-ready API client with caching, error handling, and offline fallback.
- * Connects to the AgriChain FastAPI backend for all predictions and data.
+ * Connects to the AGRI-मित्र FastAPI backend for all predictions and data.
  */
 
 // Base URL configuration - use environment variable or default to localhost
@@ -15,7 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 // Cache configuration
-const CACHE_PREFIX = 'agrichain_api_cache_v1';
+const CACHE_PREFIX = 'agrimitra_api_cache_v1';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // API client with timeout and default headers
@@ -422,3 +422,141 @@ export const classifyConfidence = (score) => {
 };
 
 export const API_BASE_URL = BASE_URL;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Intelligence API (v2) — Database-backed, ML-powered endpoints
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Get full AI advisory for a farmer's situation.
+ * Single call returns: price forecast, spoilage risk, harvest timing, mandi rankings.
+ */
+export const getFullAdvisory = async (params) => {
+  const cacheKey = buildCacheKey('full-advisory', params.crop, params.district);
+  try {
+    const response = await apiClient.post('/intelligence/full-advisory', {
+      crop: params.crop,
+      district: params.district,
+      quantity_quintals: Number(params.quantityQuintals || params.quantity_quintals || 10),
+      sowing_date: params.sowingDate || params.sowing_date || null,
+      storage_type: params.storageType || params.storage_type || 'covered',
+      packaging: params.packaging || 'jute_bag',
+    });
+    const data = response?.data || {};
+    await writeCachedPayload(cacheKey, data);
+    return withMeta(data, 'network');
+  } catch (error) {
+    if (__DEV__) console.warn('Full advisory failed:', error.message);
+    const cached = await readCachedPayload(cacheKey);
+    if (cached) return withMeta(cached, 'cache');
+    // Fall back to old endpoints
+    return null;
+  }
+};
+
+/**
+ * Get ML-powered price forecast (7-15 days).
+ */
+export const getPriceForecast = async (params) => {
+  const cacheKey = buildCacheKey('price-forecast', params.crop, params.district);
+  try {
+    const response = await apiClient.post('/intelligence/price-forecast', {
+      crop: params.crop,
+      district: params.district,
+      forecast_days: params.forecastDays || params.forecast_days || 7,
+    });
+    const data = response?.data || {};
+    await writeCachedPayload(cacheKey, data);
+    return withMeta(data, 'network');
+  } catch (error) {
+    if (__DEV__) console.warn('Price forecast failed:', error.message);
+    const cached = await readCachedPayload(cacheKey);
+    if (cached) return withMeta(cached, 'cache');
+    return withMeta(buildMandiMock(params), 'mock');
+  }
+};
+
+/**
+ * Get ML-powered mandi recommendation with profit analysis.
+ */
+export const getMandiRecommendationV2 = async (params) => {
+  const cacheKey = buildCacheKey('mandi-recommend', params.crop, params.district);
+  try {
+    const response = await apiClient.post('/intelligence/mandi-recommend', {
+      crop: params.crop,
+      district: params.district,
+      quantity_quintals: Number(params.quantityQuintals || params.quantity_quintals || 10),
+      storage_type: params.storageType || params.storage_type || 'covered',
+      packaging: params.packaging || 'jute_bag',
+    });
+    const data = response?.data || {};
+    await writeCachedPayload(cacheKey, data);
+    return withMeta(data, 'network');
+  } catch (error) {
+    if (__DEV__) console.warn('Mandi recommend failed:', error.message);
+    const cached = await readCachedPayload(cacheKey);
+    if (cached) return withMeta(cached, 'cache');
+    return withMeta(buildMandiMock(params), 'mock');
+  }
+};
+
+/**
+ * Get ML-powered spoilage risk assessment.
+ */
+export const getSpoilageRiskV2 = async (params) => {
+  const cacheKey = buildCacheKey('spoilage-v2', params.crop, params.district);
+  try {
+    const response = await apiClient.post('/intelligence/spoilage-risk', {
+      crop: params.crop,
+      district: params.district,
+      destination_market: params.destinationMarket || params.destination_market || null,
+      storage_type: params.storageType || params.storage_type || 'covered',
+      packaging: params.packaging || 'jute_bag',
+      harvest_days_ago: Number(params.daysSinceHarvest || params.harvest_days_ago || 0),
+      quantity_kg: Number(params.quantityKg || params.quantity_kg || 1000),
+    });
+    const data = response?.data || {};
+    await writeCachedPayload(cacheKey, data);
+    return withMeta(data, 'network');
+  } catch (error) {
+    if (__DEV__) console.warn('Spoilage v2 failed:', error.message);
+    const cached = await readCachedPayload(cacheKey);
+    if (cached) return withMeta(cached, 'cache');
+    return withMeta(buildSpoilageMock(params), 'mock');
+  }
+};
+
+/**
+ * Get harvest window recommendation from ML model.
+ */
+export const getHarvestWindowV2 = async (params) => {
+  const cacheKey = buildCacheKey('harvest-v2', params.crop, params.district);
+  try {
+    const response = await apiClient.post('/intelligence/harvest-window', {
+      crop: params.crop,
+      district: params.district,
+      sowing_date: params.sowingDate || params.sowing_date || null,
+      crop_age_days: params.cropAgeDays || params.crop_age_days || null,
+    });
+    const data = response?.data || {};
+    await writeCachedPayload(cacheKey, data);
+    return withMeta(data, 'network');
+  } catch (error) {
+    if (__DEV__) console.warn('Harvest v2 failed:', error.message);
+    const cached = await readCachedPayload(cacheKey);
+    if (cached) return withMeta(cached, 'cache');
+    return withMeta(buildHarvestMock(params), 'mock');
+  }
+};
+
+/**
+ * Get database data status (row counts per table).
+ */
+export const getDataStatus = async () => {
+  try {
+    const response = await apiClient.get('/intelligence/data-status');
+    return response?.data || {};
+  } catch {
+    return null;
+  }
+};

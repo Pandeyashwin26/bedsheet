@@ -1,5 +1,5 @@
 """
-AgriChain API Tests
+AGRI-मित्र API Tests
 ═══════════════════════════════════════════════════════════════════════════════
 
 Basic tests for API endpoints and health checks.
@@ -25,7 +25,7 @@ class TestHealthEndpoints:
         response = client.get("/")
         assert response.status_code == 200
         data = response.json()
-        assert data["name"] == "AgriChain API"
+        assert data["name"] == "AGRI-मित्र API"
         assert data["status"] == "running"
         assert "version" in data
 

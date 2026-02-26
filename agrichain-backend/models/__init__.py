@@ -1,5 +1,5 @@
 """
-AgriChain Prediction Models
+AGRI-मित्र Prediction Models
 ═══════════════════════════════════════════════════════════════════════════════
 
 Machine learning models for agricultural predictions.

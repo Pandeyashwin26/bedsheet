@@ -1,5 +1,5 @@
 """
-AgriChain Services
+AGRI-मित्र Services
 ═══════════════════════════════════════════════════════════════════════════════
 
 External API integrations and data services.

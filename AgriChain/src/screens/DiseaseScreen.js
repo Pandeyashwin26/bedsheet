@@ -14,6 +14,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { COLORS } from '../theme/colors';
+import { useLanguage } from '../context/LanguageContext';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CAMERA_HEIGHT = 280;
@@ -76,6 +77,7 @@ const getTreatments = (label) => {
 };
 
 export default function DiseaseScreen({ navigation }) {
+    const { t: tr } = useLanguage();
     const [permission, requestPermission] = useCameraPermissions();
     const cameraRef = useRef(null);
     const [capturedImage, setCapturedImage] = useState(null);
@@ -172,7 +174,7 @@ export default function DiseaseScreen({ navigation }) {
         <View style={styles.screen}>
             <Appbar.Header style={styles.header}>
                 <Appbar.BackAction onPress={() => navigation.goBack()} />
-                <Appbar.Content title="Crop Disease Scanner" titleStyle={styles.headerTitle} />
+                <Appbar.Content title={tr('disease.header')} titleStyle={styles.headerTitle} />
             </Appbar.Header>
 
             <ScrollView
@@ -182,8 +184,8 @@ export default function DiseaseScreen({ navigation }) {
             >
                 {/* Title */}
                 <View style={styles.titleBlock}>
-                    <Text style={styles.pageTitle}>अपनी फसल को स्कैन करें 🔬</Text>
-                    <Text style={styles.pageSubtitle}>Photo leke AI se disease pata karo</Text>
+                    <Text style={styles.pageTitle}>{tr('disease.title')}</Text>
+                    <Text style={styles.pageSubtitle}>{tr('disease.subtitle')}</Text>
                 </View>
 
                 {/* Camera / Preview */}
@@ -207,10 +209,10 @@ export default function DiseaseScreen({ navigation }) {
                     ) : (
                         <View style={styles.noCamera}>
                             <Text style={styles.noCameraText}>
-                                📷 Camera permission chahiye{'\n'}Settings me jaake allow karein
+                                {tr('disease.cameraPermission')}
                             </Text>
                             <Button mode="contained" onPress={requestPermission} buttonColor={COLORS.primary}>
-                                Permission Do
+                                {tr('disease.givePermission')}
                             </Button>
                         </View>
                     )}
@@ -220,19 +222,19 @@ export default function DiseaseScreen({ navigation }) {
                 {!capturedImage ? (
                     <View style={styles.buttonRow}>
                         <TouchableOpacity style={styles.captureButton} onPress={takePhoto} activeOpacity={0.8}>
-                            <Text style={styles.captureButtonText}>📷 Photo Lo</Text>
+                            <Text style={styles.captureButtonText}>{tr('disease.takePhoto')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.galleryButton} onPress={pickFromGallery} activeOpacity={0.8}>
-                            <Text style={styles.galleryButtonText}>🖼️ Gallery se</Text>
+                            <Text style={styles.galleryButtonText}>{tr('disease.gallery')}</Text>
                         </TouchableOpacity>
                     </View>
                 ) : !result && !loading ? (
                     <View style={styles.buttonRow}>
                         <TouchableOpacity style={styles.analyseButton} onPress={analyseImage} activeOpacity={0.8}>
-                            <Text style={styles.analyseButtonText}>जाँच करो 🔬</Text>
+                            <Text style={styles.analyseButtonText}>{tr('disease.analyze')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.retakeButton} onPress={retake} activeOpacity={0.8}>
-                            <Text style={styles.retakeButtonText}>फिर से लो</Text>
+                            <Text style={styles.retakeButtonText}>{tr('disease.retake')}</Text>
                         </TouchableOpacity>
                     </View>
                 ) : null}
@@ -242,7 +244,7 @@ export default function DiseaseScreen({ navigation }) {
                     <Card style={styles.card}>
                         <Card.Content style={styles.loaderContent}>
                             <ActivityIndicator size="large" color={COLORS.primary} />
-                            <Text style={styles.loaderText}>आपकी फसल जाँची जा रही है...</Text>
+                            <Text style={styles.loaderText}>{tr('disease.loading')}</Text>
                         </Card.Content>
                     </Card>
                 ) : null}
@@ -265,13 +267,13 @@ export default function DiseaseScreen({ navigation }) {
                                     <View style={[styles.confidenceBar, { width: `${confidencePercent}%` }]} />
                                 </View>
                                 <Text style={styles.confidenceText}>
-                                    AI को {confidencePercent}% यकीन है
+                                    {tr('disease.confidence', { percent: confidencePercent })}
                                 </Text>
 
                                 {!healthy ? (
                                     <View style={styles.impactBox}>
                                         <Text style={styles.impactText}>
-                                            ⚠️ 3 दिन पहले फसल काटें — नुकसान कम होगा
+                                            {tr('disease.impact')}
                                         </Text>
                                     </View>
                                 ) : null}
@@ -282,7 +284,7 @@ export default function DiseaseScreen({ navigation }) {
                         {treatments.length > 0 ? (
                             <Card style={styles.card}>
                                 <Card.Content style={styles.treatmentContent}>
-                                    <Text style={styles.sectionTitle}>इलाज के तरीके 💊</Text>
+                                    <Text style={styles.sectionTitle}>{tr('disease.treatmentTitle')}</Text>
                                     {treatments.map((t) => (
                                         <View key={t.rank} style={styles.treatmentRow}>
                                             <Text style={styles.treatmentRank}>{t.rank}</Text>
@@ -304,7 +306,7 @@ export default function DiseaseScreen({ navigation }) {
                             contentStyle={styles.updatePlanContent}
                             onPress={() => navigation.navigate('Recommendation')}
                         >
-                            फसल का प्लान अपडेट करें 📋
+                            {tr('disease.updatePlan')}
                         </Button>
 
                         <Button
@@ -312,7 +314,7 @@ export default function DiseaseScreen({ navigation }) {
                             style={styles.retakeFull}
                             onPress={retake}
                         >
-                            दूसरी Photo Scan करें
+                            {tr('disease.scanAnother')}
                         </Button>
                     </>
                 ) : null}
@@ -323,13 +325,13 @@ export default function DiseaseScreen({ navigation }) {
                         <Card.Content style={styles.failContent}>
                             <Text style={styles.failEmoji}>📸</Text>
                             <Text style={styles.failTitle}>
-                                फोटो सेव हो गई। हमारा expert 2 घंटे में जाँच करेगा।
+                                {tr('disease.photoSaved')}
                             </Text>
                             <Text style={styles.failSubtitle}>
-                                Internet connection check करें या बाद में try करें
+                                {tr('disease.checkInternet')}
                             </Text>
                             <Button mode="contained" onPress={retake} buttonColor={COLORS.accent}>
-                                फिर से Try करें
+                                {tr('disease.retake')}
                             </Button>
                         </Card.Content>
                     </Card>

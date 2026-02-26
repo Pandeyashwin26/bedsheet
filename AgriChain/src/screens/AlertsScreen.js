@@ -2,79 +2,50 @@ import React, { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Appbar, Card, Text } from 'react-native-paper';
 import { COLORS } from '../theme/colors';
-import { fetchWeatherData, generateAlerts } from '../components/WeatherBanner';
-
-const STATIC_ALERTS = [
-    {
-        id: 'neighbor',
-        type: 'neighbor',
-        urgency: 4,
-        color: '#E65100',
-        bgColor: '#FFF3E0',
-        borderColor: '#FFCC80',
-        icon: '👥',
-        message: 'Nashik मंडी में Onion की supply ज़्यादा है — भाव गिर सकते हैं',
-        action: 'दूसरी मंडी देखें',
-        time: '2 घंटे पहले',
-    },
-    {
-        id: 'scheme',
-        type: 'scheme',
-        urgency: 5,
-        color: '#1565C0',
-        bgColor: '#E3F2FD',
-        borderColor: '#90CAF9',
-        icon: '🏛️',
-        message: 'PM-KISAN की अगली किस्त के लिए last date नज़दीक है — अभी apply करें',
-        action: 'Schemes देखें',
-        time: '5 घंटे पहले',
-    },
-    {
-        id: 'harvest',
-        type: 'harvest',
-        urgency: 6,
-        color: '#2E7D32',
-        bgColor: '#E8F5E9',
-        borderColor: '#A5D6A7',
-        icon: '⏰',
-        message: 'आपकी Onion फसल का harvest window कल से शुरू हो रहा है',
-        action: 'Plan देखें',
-        time: '8 घंटे पहले',
-    },
-];
-
-const TYPE_LABELS = {
-    weather: '🌧️ मौसम',
-    price: '📈 भाव',
-    neighbor: '👥 Supply',
-    scheme: '🏛️ योजना',
-    harvest: '⏰ फसल',
-    info: '🟢 Info',
-};
+import { useLanguage } from '../context/LanguageContext';
 
 export default function AlertsScreen({ navigation }) {
+    const { t } = useLanguage();
     const [alerts, setAlerts] = useState([]);
 
+    const STATIC_ALERTS = [
+        {
+            id: 'neighbor', type: 'neighbor', urgency: 4,
+            color: '#E65100', bgColor: '#FFF3E0', borderColor: '#FFCC80',
+            icon: '👥',
+            message: t('alerts.supplyAlert', { crop: 'Onion', district: 'Nashik' }),
+            action: t('alerts.checkOther'),
+            time: t('alerts.hoursAgo', { n: 2 }),
+        },
+        {
+            id: 'scheme', type: 'scheme', urgency: 5,
+            color: '#1565C0', bgColor: '#E3F2FD', borderColor: '#90CAF9',
+            icon: '🏛️',
+            message: t('alerts.schemeAlert'),
+            action: t('alerts.viewSchemes'),
+            time: t('alerts.hoursAgo', { n: 5 }),
+        },
+        {
+            id: 'harvest', type: 'harvest', urgency: 6,
+            color: '#2E7D32', bgColor: '#E8F5E9', borderColor: '#A5D6A7',
+            icon: '⏰',
+            message: t('alerts.harvestAlert', { crop: 'Onion' }),
+            action: t('alerts.viewPlan'),
+            time: t('alerts.hoursAgo', { n: 8 }),
+        },
+    ];
+
+    const TYPE_LABELS = {
+        weather: t('alerts.typeWeather'),
+        price: t('alerts.typePrice'),
+        neighbor: t('alerts.typeSupply'),
+        scheme: t('alerts.typeScheme'),
+        harvest: t('alerts.typeCrop'),
+        info: t('alerts.typeInfo'),
+    };
+
     useEffect(() => {
-        (async () => {
-            const weather = await fetchWeatherData('Nashik');
-            const weatherAlerts = generateAlerts(weather, {
-                priceSpike: true,
-                district: 'Nashik',
-                spikePercent: 12,
-            });
-
-            const dynamicAlerts = weatherAlerts.map((a) => ({
-                ...a,
-                action: 'विस्तार से देखें',
-                time: 'अभी',
-            }));
-
-            const allAlerts = [...dynamicAlerts, ...STATIC_ALERTS].sort(
-                (a, b) => a.urgency - b.urgency
-            );
-            setAlerts(allAlerts);
-        })();
+        setAlerts([...STATIC_ALERTS].sort((a, b) => a.urgency - b.urgency));
     }, []);
 
     const renderAlert = ({ item }) => (
@@ -121,7 +92,7 @@ export default function AlertsScreen({ navigation }) {
             <Appbar.Header style={styles.header}>
                 <Appbar.BackAction onPress={() => navigation.goBack()} />
                 <Appbar.Content
-                    title="आपके लिए अलर्ट 🔔"
+                    title={t('alerts.header')}
                     titleStyle={styles.headerTitle}
                 />
             </Appbar.Header>
@@ -135,7 +106,7 @@ export default function AlertsScreen({ navigation }) {
                 ListEmptyComponent={
                     <View style={styles.emptyState}>
                         <Text style={styles.emptyEmoji}>🔔</Text>
-                        <Text style={styles.emptyText}>कोई नया alert नहीं है</Text>
+                        <Text style={styles.emptyText}>{t('alerts.noAlerts')}</Text>
                     </View>
                 }
             />

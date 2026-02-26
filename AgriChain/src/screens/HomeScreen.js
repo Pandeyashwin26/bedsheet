@@ -11,47 +11,20 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../theme/colors';
 import WeatherBanner from '../components/WeatherBanner';
-
-const ACTION_CARDS = [
-  {
-    emoji: '\u{1F4C5}',
-    title: 'Harvest Advisor',
-    subtitle: 'Best time to harvest',
-    route: 'CropInput',
-  },
-  {
-    emoji: '\u{1F4B0}',
-    title: 'Best Mandi',
-    subtitle: 'Where to sell',
-    tab: 'Market',
-  },
-  {
-    emoji: '\u{1F4E6}',
-    title: 'Spoilage Risk',
-    subtitle: 'Keep crops fresh',
-    route: 'Spoilage',
-  },
-  {
-    emoji: '\u{1F52C}',
-    title: 'Disease Scanner',
-    subtitle: 'AI se pehchano',
-    tab: 'Disease',
-  },
-  {
-    emoji: '\u{1F3DB}\u{FE0F}',
-    title: 'Govt Schemes',
-    subtitle: 'Get benefits',
-    route: 'Schemes',
-  },
-  {
-    emoji: '\u{1F514}',
-    title: 'Smart Alerts',
-    subtitle: 'Weather + Prices',
-    route: 'Alerts',
-  },
-];
+import { useLanguage } from '../context/LanguageContext';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 export default function HomeScreen({ navigation }) {
+  const { t } = useLanguage();
+
+  const ACTION_CARDS = [
+    { emoji: '\u{1F4C5}', titleKey: 'home.harvestAdvisor', subtitleKey: 'home.harvestAdvisorSub', route: 'CropInput' },
+    { emoji: '\u{1F4B0}', titleKey: 'home.bestMandi', subtitleKey: 'home.bestMandiSub', tab: 'Market' },
+    { emoji: '\u{1F4E6}', titleKey: 'home.spoilageRisk', subtitleKey: 'home.spoilageRiskSub', route: 'Spoilage' },
+    { emoji: '\u{1F52C}', titleKey: 'home.diseaseScanner', subtitleKey: 'home.diseaseScannerSub', tab: 'Disease' },
+    { emoji: '\u{1F3DB}\u{FE0F}', titleKey: 'home.govtSchemes', subtitleKey: 'home.govtSchemesSub', route: 'Schemes' },
+    { emoji: '\u{1F514}', titleKey: 'home.smartAlerts', subtitleKey: 'home.smartAlertsSub', route: 'Alerts' },
+  ];
   const openAriaAssistant = () => {
     navigation.navigate('ARIA', {
       context: {
@@ -82,8 +55,8 @@ export default function HomeScreen({ navigation }) {
         style={styles.header}
       >
         <View style={styles.topBar}>
-          <Text style={styles.brand}>{'\u{1F33E} AgriChain'}</Text>
-          <Text style={styles.languageToggle}>{`EN | \u0939\u093f\u0902`}</Text>
+          <Text style={styles.brand}>{t('common.appName')}</Text>
+          <LanguageSwitcher compact />
         </View>
       </LinearGradient>
 
@@ -99,24 +72,24 @@ export default function HomeScreen({ navigation }) {
         />
 
         <View style={styles.greetingCard}>
-          <Text style={styles.greetingTitle}>{'Namaste \u{1F44B}'}</Text>
+          <Text style={styles.greetingTitle}>{t('home.greeting')}</Text>
           <Text style={styles.greetingSubtitle}>
-            What do you need help with today?
+            {t('home.subtitle')}
           </Text>
         </View>
 
         <View style={styles.grid}>
           {ACTION_CARDS.map((card) => (
             <TouchableOpacity
-              key={card.title}
+              key={card.titleKey}
               style={styles.actionCard}
               activeOpacity={0.85}
               onPress={() => handleCardPress(card)}
             >
               <Text style={styles.cardEmoji}>{card.emoji}</Text>
               <View style={styles.cardTextBlock}>
-                <Text style={styles.cardTitle}>{card.title}</Text>
-                <Text style={styles.cardSubtitle}>{card.subtitle}</Text>
+                <Text style={styles.cardTitle}>{t(card.titleKey)}</Text>
+                <Text style={styles.cardSubtitle}>{t(card.subtitleKey)}</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -128,7 +101,7 @@ export default function HomeScreen({ navigation }) {
         activeOpacity={0.9}
         onPress={openAriaAssistant}
       >
-        <Text style={styles.ariaFabText}>{'\u{1F3A4} ARIA'}</Text>
+        <Text style={styles.ariaFabText}>{t('home.ariaFab')}</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );

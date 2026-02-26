@@ -1,10 +1,15 @@
 import React, { useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import {
+  NavigationContainer,
+  DefaultTheme,
+  createNavigationContainerRef,
+} from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Provider as PaperProvider, MD3LightTheme } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ActivityIndicator, View } from 'react-native';
 import AlertsScreen from './src/screens/AlertsScreen';
 import ARIAScreen from './src/screens/AriaScreen';
 import CropInputScreen from './src/screens/CropInputScreen';
@@ -15,8 +20,17 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import RecommendationScreen from './src/screens/RecommendationScreen';
 import SchemesScreen from './src/screens/SchemesScreen';
 import SpoilageScreen from './src/screens/SpoilageScreen';
+import LoginScreen from './src/screens/LoginScreen';
+import RegisterScreen from './src/screens/RegisterScreen';
+import DashboardScreen from './src/screens/DashboardScreen';
 import { COLORS } from './src/theme/colors';
 import { setupNotifications, showPermissionResult } from './src/services/notificationService';
+import { AriaProvider } from './src/context/AriaContext';
+import AriaOverlay from './src/components/AriaOverlay';
+import { LanguageProvider } from './src/context/LanguageContext';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
+
+const navigationRef = createNavigationContainerRef();
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -105,6 +119,42 @@ function MainTabs() {
   );
 }
 
+function AppNavigator() {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background }}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      {!isAuthenticated ? (
+        <>
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Register" component={RegisterScreen} />
+          <Stack.Screen name="MainTabs" component={MainTabs} />
+        </>
+      ) : (
+        <>
+          <Stack.Screen name="MainTabs" component={MainTabs} />
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Register" component={RegisterScreen} />
+        </>
+      )}
+      <Stack.Screen name="CropInput" component={CropInputScreen} />
+      <Stack.Screen name="Recommendation" component={RecommendationScreen} />
+      <Stack.Screen name="Spoilage" component={SpoilageScreen} />
+      <Stack.Screen name="Alerts" component={AlertsScreen} />
+      <Stack.Screen name="Schemes" component={SchemesScreen} />
+      <Stack.Screen name="Dashboard" component={DashboardScreen} />
+    </Stack.Navigator>
+  );
+}
+
 export default function App() {
   useEffect(() => {
     (async () => {
@@ -116,19 +166,16 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <PaperProvider theme={paperTheme}>
-        <NavigationContainer theme={navTheme}>
-          <Stack.Navigator screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="MainTabs" component={MainTabs} />
-            <Stack.Screen name="CropInput" component={CropInputScreen} />
-            <Stack.Screen
-              name="Recommendation"
-              component={RecommendationScreen}
-            />
-            <Stack.Screen name="Spoilage" component={SpoilageScreen} />
-            <Stack.Screen name="Alerts" component={AlertsScreen} />
-            <Stack.Screen name="Schemes" component={SchemesScreen} />
-          </Stack.Navigator>
-        </NavigationContainer>
+        <LanguageProvider>
+          <AuthProvider>
+            <AriaProvider navigationRef={navigationRef}>
+              <NavigationContainer theme={navTheme} ref={navigationRef}>
+                <AppNavigator />
+                <AriaOverlay />
+              </NavigationContainer>
+            </AriaProvider>
+          </AuthProvider>
+        </LanguageProvider>
       </PaperProvider>
     </SafeAreaProvider>
   );

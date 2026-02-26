@@ -1,4 +1,4 @@
-# AgriChain Backend
+# AGRI-मित्र Backend
 
 > **FastAPI-based AI-powered post-harvest advisory API**
 
@@ -66,10 +66,10 @@ ruff check --fix .
 
 ```bash
 # Build image
-docker build -t agrichain-api .
+docker build -t agrimitra-api .
 
 # Run container
-docker run -p 8000:8000 --env-file ../.env agrichain-api
+docker run -p 8000:8000 --env-file ../.env agrimitra-api
 ```
 
 ## Project Structure

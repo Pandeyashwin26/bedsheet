@@ -1,0 +1,162 @@
+# KisanMitra — AI Agricultural Advisory System
+
+An AI-powered system that recommends optimal harvest timing, best target markets, assesses spoilage risk, and suggests preservation actions for Indian farmers. Built mobile-first for basic Android phones with explainable recommendations in plain language.
+
+## Architecture Overview
+
+```mermaid
+graph TB
+    subgraph Frontend["Mobile-First Frontend (Vite)"]
+        UI[Crop & Region Selector]
+        HW[Harvest Window View]
+        MK[Market Matcher View]
+        SR[Spoilage Risk View]
+        PA[Preservation Actions View]
+        WHY[Explainability Panels]
+    end
+    subgraph Backend["Express API Server"]
+        API[REST API]
+        HE[Harvest Engine]
+        ME[Market Engine]
+        SE[Spoilage Engine]
+        PE[Preservation Engine]
+        XAI[Explainability Module]
+    end
+    subgraph Data["Data Layer"]
+        MANDI[Mandi Price DB]
+        WEATHER[Weather Patterns]
+        SOIL[Soil Health Index]
+        CROP[Crop Profiles]
+    end
+    UI --> API
+    API --> HE & ME & SE & PE
+    HE & ME & SE & PE --> XAI
+    HE & ME & SE & PE --> MANDI & WEATHER & SOIL & CROP
+```
+
+## Proposed Changes
+
+### Data Layer
+
+Comprehensive JSON-based data stores simulating real-time feeds. Each dataset is curated from real Indian agricultural data patterns.
+
+#### [NEW] [mandiPrices.js](file:///d:/beadsheet/server/data/mandiPrices.js)
+- Historical and current mandi prices for 15+ crops across 20+ mandis
+- Fields: `crop, mandi, state, date, price_per_quintal, arrival_tonnes, trend`
+- 6-month rolling price history with seasonal patterns
+
+#### [NEW] [weatherPatterns.js](file:///d:/beadsheet/server/data/weatherPatterns.js)
+- Regional weather data for major agricultural zones
+- Fields: `region, state, temperature, humidity, rainfall_mm, forecast_7d, season`
+- Includes monsoon patterns specific to different agroclimatic zones
+
+#### [NEW] [soilHealth.js](file:///d:/beadsheet/server/data/soilHealth.js)
+- Soil health card data by district
+- Fields: `district, state, ph, organic_carbon, nitrogen, phosphorus, potassium, moisture, type`
+
+#### [NEW] [cropProfiles.js](file:///d:/beadsheet/server/data/cropProfiles.js)
+- Comprehensive crop database with harvest windows, storage profiles, spoilage characteristics
+- Fields: `name, name_hi, category, growing_season, harvest_months, optimal_temp, optimal_humidity, shelf_life_days, spoilage_rate_per_day, cold_storage_extension, preservation_methods[]`
+
+---
+
+### AI Recommendation Engines
+
+Rule-based + weighted scoring engines that combine multiple data signals.
+
+#### [NEW] [harvestEngine.js](file:///d:/beadsheet/server/engines/harvestEngine.js)
+- Combines weather forecast, crop maturity cycle, and price trend to recommend harvest window
+- Outputs: `recommended_date_range, confidence_score, weather_risk, price_outlook`
+- Explainability: lists each factor and its contribution to the recommendation
+
+#### [NEW] [marketEngine.js](file:///d:/beadsheet/server/engines/marketEngine.js)
+- Ranks target mandis by: current price, price trend, distance, arrival volume (supply-demand)
+- Outputs: `ranked_mandis[], expected_price, transport_cost_estimate, net_revenue_estimate`
+- Explainability: shows price comparison table and why top mandi beats others
+
+#### [NEW] [spoilageEngine.js](file:///d:/beadsheet/server/engines/spoilageEngine.js)
+- Calculates spoilage probability based on: crop type, storage conditions, ambient temperature, transit time
+- Outputs: `spoilage_risk_percent, expected_loss_kg, risk_category (LOW/MEDIUM/HIGH/CRITICAL), time_to_critical`
+- Explainability: breaks down each risk factor's contribution
+
+#### [NEW] [preservationEngine.js](file:///d:/beadsheet/server/engines/preservationEngine.js)
+- Ranks preservation actions by: cost, effectiveness, availability in rural areas
+- Outputs: `actions[] { method, cost_category, effectiveness_percent, shelf_life_extension_days, availability, instructions }`
+- Includes low-tech options (sand layering, neem treatment, solar drying)
+
+#### [NEW] [explainability.js](file:///d:/beadsheet/server/engines/explainability.js)
+- Generates human-readable explanations for every recommendation
+- Produces structured "reason cards" with icon, title, description, impact_level
+- Supports both English and Hindi output
+
+---
+
+### API Server
+
+#### [NEW] [server.js](file:///d:/beadsheet/server/server.js)
+- Express server with CORS, JSON parsing
+- Endpoints:
+  - `GET /api/crops` — list available crops
+  - `GET /api/regions` — list regions/states
+  - `POST /api/recommend` — full recommendation (harvest + market + spoilage + preservation)
+  - `GET /api/mandi-prices/:crop` — price trends for a crop
+
+---
+
+### Mobile-First Frontend
+
+Designed for 4-5 inch screens, minimal data usage, plain-language output.
+
+#### [NEW] [index.html](file:///d:/beadsheet/index.html)
+- Single-page app shell with semantic HTML5
+- Mobile viewport, minimal footprint
+
+#### [NEW] [style.css](file:///d:/beadsheet/style.css)
+- Mobile-first CSS with earthy/agricultural color palette
+- Card-based layout with large touch targets (48px minimum)
+- Dark/light mode with green/amber/terracotta accents
+- Animated risk gauges, progress indicators
+- Print-friendly for screenshots
+
+#### [NEW] [app.js](file:///d:/beadsheet/app.js)
+- Vanilla JS application logic
+- Crop & region selection → API call → render results
+- Four result sections: Harvest Window, Best Market, Spoilage Risk, Preservation Actions
+- Each section has a "Why this recommendation?" expandable panel
+- Loading states, error handling, offline fallback message
+
+#### [NEW] [vite.config.js](file:///d:/beadsheet/vite.config.js)
+- Vite config with proxy to Express backend
+
+#### [NEW] [package.json](file:///d:/beadsheet/package.json)
+- Dependencies: vite, express, cors
+
+---
+
+## Design Principles
+
+| Principle | Implementation |
+|---|---|
+| **Trust** | Every recommendation has a "Why?" panel showing contributing factors |
+| **Simplicity** | Large icons, plain Hindi/English, color-coded risk levels (🟢🟡🟠🔴) |
+| **Mobile-first** | 320px minimum width, card layout, bottom-sheet interactions |
+| **Low data** | No images/heavy assets, ~50KB total, works on 2G |
+| **Actionable** | Recommendations include specific dates, mandi names, preservation steps |
+
+## Verification Plan
+
+### Automated / Browser Testing
+1. **Start the application**: `cd d:\beadsheet && npm install && npm run dev`
+2. **Browser test**: Use browser subagent to:
+   - Navigate to the app at `http://localhost:5173`
+   - Select a crop (e.g., Tomato) and region (e.g., Maharashtra)
+   - Submit and verify all four recommendation cards appear
+   - Expand "Why?" panels and verify explanations are visible
+   - Test on 375px width viewport (mobile simulation)
+   - Verify risk gauge colors match risk levels
+   - Test with different crop/region combinations
+
+### Manual Verification
+- User can visually inspect the mobile UI on their phone by opening the dev server URL
+- User can verify that Hindi labels are correctly rendered
+- User can confirm recommendations feel reasonable for known crop-region combinations

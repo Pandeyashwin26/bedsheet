@@ -1,107 +1,153 @@
-# AgriChain (Expo React Native)
+# AgriChain
 
-AgriChain is a React Native Expo app focused on farmer decision support:
-- harvest timing guidance
-- mandi selection support
-- simple recommendation reasoning
+AgriChain is a farmer decision-support platform with:
+- an Expo React Native mobile app (`AgriChain/`)
+- a FastAPI + ML backend (`agrichain-backend/`)
 
-## Tech Stack
+## Mobile App (Expo React Native)
 
+### Tech Stack
 - Expo SDK 55
 - React Native
 - React Navigation (bottom tabs + stack)
 - React Native Paper
 - Axios
-- OpenWeatherMap API (7-day weather)
-- data.gov.in Agmarknet API (mandi prices)
+- OpenWeatherMap API
+- data.gov.in Agmarknet API
 
-## Current Features
-
-- Home screen with themed dashboard cards
-- Bottom tab navigation: Home, Market, ARIA, Profile
+### Current Features
+- Home dashboard cards: Harvest Advisor, Spoilage Risk, etc.
+- Bottom tabs: Home, Market, ARIA, Profile
 - Crop input flow:
-  - crop selection
-  - district selection
-  - soil type
-  - sowing date
+  - crop, district, soil type, sowing date
   - storage type
   - transit time slider (1-48 hours)
 - Recommendation screen:
-  - Best Harvest Window card
-  - Best Mandi card with price range and earnings comparison
-  - "Why we recommend this" expandable reasoning card (open by default)
-- API + fallback logic:
-  - tries live weather and mandi APIs
-  - falls back to calculated/mock recommendations if API is unavailable
+  - best harvest window
+  - best mandi with earnings comparison
+  - expandable "Why we recommend this"
+  - quick navigation to Spoilage Risk checker
+- Spoilage Risk screen:
+  - auto-filled inputs when opened from Recommendation
+  - crop/storage pickers + days-since-harvest slider + transit slider
+  - weather temperature context display
+  - animated circular risk meter (Low/Medium/High/Critical)
+  - ranked preservation actions by cost
+  - explanatory "Why" section
+- API fallback behavior:
+  - if weather/mandi API fails, app still returns calculated fallback recommendations
 
-## Prerequisites
-
+### Prerequisites
 - Node.js 20.19.4 or newer (24.x recommended)
 - npm
 - Expo Go app on Android device
 - Android Platform Tools (`adb`) for USB debugging workflow
 
-## Install
-
+### Install
 ```bash
 npm install
 ```
 
-## Run (Android with Expo Go)
-
+### Run (Android)
 ```bash
 npm run android
 ```
 
-If you use a physical Android phone:
+If using a physical Android phone:
 1. Enable Developer Options and USB debugging.
 2. Connect phone by USB and approve debugging prompt.
-3. Confirm detection:
-
+3. Verify:
 ```bash
 adb devices
 ```
 
-## Environment Variables
-
-Create a `.env` file in project root:
-
+### Mobile Environment Variables
+Create `.env` in `AgriChain/`:
 ```env
 EXPO_PUBLIC_OPENWEATHER_API_KEY=your_openweather_key
 EXPO_PUBLIC_DATA_GOV_API_KEY=your_data_gov_key
 ```
 
-Notes:
-- `EXPO_PUBLIC_OPENWEATHER_API_KEY` is used for OpenWeatherMap One Call weather data.
-- `EXPO_PUBLIC_DATA_GOV_API_KEY` is used for Agmarknet mandi price data.
-- If either API fails or key is missing, app automatically uses fallback calculations.
+## Backend (FastAPI + ML Pipeline)
 
-## Navigation Flow
+Backend location: `agrichain-backend/`
 
-- Home -> Harvest Advisor -> Crop Input -> Recommendation
+### Backend Features
+- Weather ingestion (`OpenWeatherMap`) with derived weather signals
+- Mandi ingestion (`Agmarknet`) with moving averages, momentum, pressure, and spread
+- Feature engineering layer combining crop + weather + market features
+- ML/decision modules:
+  - `price_trend_model.py` (CalibratedClassifierCV + fallback rules)
+  - `harvest_window_model.py` (rules + confidence)
+  - `spoilage_risk_model.py` (rule-based risk scoring)
+  - `decision_engine.py` (final action + preservation ranking)
+  - `explainability_engine.py` (3 plain-language reasons + confidence message)
+- 6-hour caching for weather/mandi fetches
+- graceful fallback behavior if external APIs fail
+- CORS enabled for React Native integration
+
+### Backend Setup
+```bash
+cd ../agrichain-backend
+pip install -r requirements.txt
+```
+
+Create `.env` in `agrichain-backend/`:
+```env
+OPENWEATHER_API_KEY=your_openweather_key
+DATAGOV_API_KEY=your_data_gov_key
+CORS_ORIGINS=*
+PORT=8000
+```
+
+Run backend:
+```bash
+uvicorn main:app --reload
+```
+
+### Backend Endpoints
+- `POST /predict/harvest`
+- `POST /predict/mandi`
+- `POST /predict/spoilage`
+- `POST /explain/recommendation`
+- `GET /health`
 
 ## Project Structure
 
 ```text
-src/
-  data/
-    agriOptions.js
-  screens/
-    HomeScreen.js
-    CropInputScreen.js
-    RecommendationScreen.js
-    MarketScreen.js
-    AriaScreen.js
-    ProfileScreen.js
+AgriChain/
+  App.js
+  src/
+    data/
+    screens/
+      HomeScreen.js
+      CropInputScreen.js
+      RecommendationScreen.js
+      SpoilageScreen.js
+      MarketScreen.js
+      AriaScreen.js
+      ProfileScreen.js
+    services/
+      recommendationService.js
+    theme/
+      colors.js
+
+agrichain-backend/
+  main.py
+  models/
+    price_trend_model.py
+    harvest_window_model.py
+    spoilage_risk_model.py
   services/
-    recommendationService.js
-  theme/
-    colors.js
-App.js
+    weather_service.py
+    mandi_service.py
+    feature_engineering.py
+  decision_engine.py
+  explainability_engine.py
+  requirements.txt
 ```
 
-## Scripts
-
+## App Scripts
 - `npm start` - start Expo dev server
 - `npm run android` - run on Android
 - `npm run ios` - run on iOS (macOS required)

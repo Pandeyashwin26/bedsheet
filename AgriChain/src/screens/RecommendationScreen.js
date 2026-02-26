@@ -1,22 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Appbar, Card, Text, ActivityIndicator } from 'react-native-paper';
+import { ActivityIndicator, Appbar, Button, Card, Text } from 'react-native-paper';
 import {
+  classifyConfidence,
   formatCurrency,
-  formatWindowLabel,
-  getRecommendation,
-} from '../services/recommendationService';
+  getExplanation,
+  getHarvestRecommendation,
+  getMandiRecommendation,
+} from '../services/apiService';
 import { COLORS } from '../theme/colors';
-
-const BADGE_ITEMS = [
-  '\u{1F326}\u{FE0F} Weather \u2713',
-  '\u{1F331} Soil \u2713',
-  '\u{1F4C8} Mandi \u2713',
-];
 
 const defaultFormData = {
   crop: 'Onion',
+  cropStage: 'harvest-ready',
   district: 'Nashik',
   soilType: 'Black Soil (Regur)',
   sowingDate: new Date().toISOString(),
@@ -24,10 +21,55 @@ const defaultFormData = {
   transitHours: 12,
 };
 
+const formatDateLabel = (value) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return 'Date unavailable';
+  }
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(parsed);
+};
+
+const buildWindowText = (harvestWindow) =>
+  `${formatDateLabel(harvestWindow?.start)} — ${formatDateLabel(harvestWindow?.end)}`;
+
+function ConfidenceIndicator({ score }) {
+  const config = classifyConfidence(score);
+  return (
+    <View style={styles.confidenceRow}>
+      <View style={[styles.confidenceDot, { backgroundColor: config.color }]} />
+      <Text style={styles.confidenceText}>{config.label}</Text>
+    </View>
+  );
+}
+
+function SkeletonCard({ title }) {
+  return (
+    <Card style={styles.card}>
+      <View style={styles.skeletonHeader}>
+        <Text style={styles.skeletonHeaderText}>{title}</Text>
+      </View>
+      <Card.Content style={styles.cardBody}>
+        <View style={styles.skeletonLineWide} />
+        <View style={styles.skeletonLineMid} />
+        <View style={styles.skeletonLineShort} />
+      </Card.Content>
+    </Card>
+  );
+}
+
 export default function RecommendationScreen({ navigation, route }) {
   const [expanded, setExpanded] = useState(true);
-  const [loading, setLoading] = useState(true);
-  const [recommendation, setRecommendation] = useState(null);
+  const [harvestData, setHarvestData] = useState(null);
+  const [mandiData, setMandiData] = useState(null);
+  const [explanationData, setExplanationData] = useState(null);
+  const [loadingHarvest, setLoadingHarvest] = useState(true);
+  const [loadingMandi, setLoadingMandi] = useState(true);
+  const [loadingWhy, setLoadingWhy] = useState(true);
+  const [offlineBanner, setOfflineBanner] = useState('');
 
   const formData = useMemo(
     () => route?.params?.formData || defaultFormData,
@@ -37,43 +79,100 @@ export default function RecommendationScreen({ navigation, route }) {
   useEffect(() => {
     let mounted = true;
 
-    const loadRecommendation = async () => {
-      setLoading(true);
-      let response;
-      try {
-        response = await getRecommendation(formData);
-      } catch {
-        response = await getRecommendation(defaultFormData);
+    const loadRecommendations = async () => {
+      setLoadingHarvest(true);
+      setLoadingMandi(true);
+      setLoadingWhy(true);
+      setOfflineBanner('');
+
+      const harvestPromise = getHarvestRecommendation({
+        crop: formData.crop,
+        district: formData.district,
+        sowingDate: formData.sowingDate,
+        cropStage: formData.cropStage || 'harvest-ready',
+        soilType: formData.soilType,
+      });
+
+      const mandiPromise = getMandiRecommendation({
+        crop: formData.crop,
+        district: formData.district,
+        quantityQuintals: 10,
+      });
+
+      const [harvestResponse, mandiResponse] = await Promise.all([
+        harvestPromise,
+        mandiPromise,
+      ]);
+
+      if (!mounted) {
+        return;
       }
-      if (mounted) {
-        setRecommendation(response);
-        setLoading(false);
+
+      setHarvestData(harvestResponse);
+      setMandiData(mandiResponse);
+      setLoadingHarvest(false);
+      setLoadingMandi(false);
+
+      if (harvestResponse?._meta?.usedCache || mandiResponse?._meta?.usedCache) {
+        setOfflineBanner(
+          '\u{1F4F5} No internet \u2014 showing your last saved recommendation'
+        );
+      }
+
+      const explainResponse = await getExplanation({
+        crop: formData.crop,
+        district: formData.district,
+        decisionId: `${formData.crop}-${formData.district}-${Date.now()}`,
+      });
+
+      if (!mounted) {
+        return;
+      }
+
+      setExplanationData(explainResponse);
+      setLoadingWhy(false);
+
+      if (explainResponse?._meta?.usedCache) {
+        setOfflineBanner(
+          '\u{1F4F5} No internet \u2014 showing your last saved recommendation'
+        );
       }
     };
 
-    loadRecommendation();
-
+    loadRecommendations();
     return () => {
       mounted = false;
     };
   }, [formData]);
 
-  if (loading || !recommendation) {
-    return (
-      <View style={styles.loaderScreen}>
-        <ActivityIndicator animating size="large" color={COLORS.primary} />
-        <Text style={styles.loaderText}>Preparing your recommendation...</Text>
+  const openSpoilageRisk = () => {
+    navigation.navigate('Spoilage', {
+      prefill: {
+        crop: formData.crop,
+        district: formData.district,
+        storageType: formData.storageType,
+        transitHours: Number(formData.transitHours || 12),
+      },
+      source: 'recommendation',
+    });
+  };
+
+  const renderWhyReasons = () => {
+    const reasons = [
+      explanationData?.weather_reason,
+      explanationData?.market_reason,
+      explanationData?.supply_reason,
+    ].filter(Boolean);
+
+    return reasons.map((reason) => (
+      <View key={reason} style={styles.reasonRow}>
+        <Text style={styles.reasonIcon}>{'\u2022'}</Text>
+        <Text style={styles.reasonText}>{reason}</Text>
       </View>
-    );
-  }
+    ));
+  };
 
-  const windowText = formatWindowLabel(
-    recommendation.harvestWindow.start,
-    recommendation.harvestWindow.end
-  );
-
-  const usingFallback =
-    recommendation.sources.weather !== 'api' || recommendation.sources.mandi !== 'api';
+  const isPendingBoth = loadingHarvest && loadingMandi;
 
   return (
     <View style={styles.screen}>
@@ -87,65 +186,67 @@ export default function RecommendationScreen({ navigation, route }) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Card style={styles.card}>
-          <View style={[styles.cardHeader, styles.harvestHeader]}>
-            <Text style={styles.cardHeaderText}>
-              {'\u{1F5D3}\u{FE0F} Best Harvest Window'}
-            </Text>
+        {offlineBanner ? (
+          <View style={styles.offlineBanner}>
+            <Text style={styles.offlineBannerText}>{offlineBanner}</Text>
           </View>
-          <Card.Content style={styles.cardBody}>
-            <Text style={styles.windowValue}>{windowText}</Text>
+        ) : null}
 
-            <View style={styles.badgeRow}>
-              {BADGE_ITEMS.map((item) => (
-                <View key={item} style={styles.badgePill}>
-                  <Text style={styles.badgeText}>{item}</Text>
-                </View>
-              ))}
-            </View>
-
-            <Text style={styles.windowSubtitle}>
-              {recommendation.harvestWindow.subtitle}
-            </Text>
-          </Card.Content>
-        </Card>
-
-        <Card style={styles.card}>
-          <View style={[styles.cardHeader, styles.marketHeader]}>
-            <Text style={styles.cardHeaderText}>
-              {`\u{1F3EA} Sell at ${recommendation.mandi.marketName}`}
-            </Text>
-          </View>
-          <Card.Content style={styles.cardBody}>
-            <Text style={styles.priceRange}>
-              {`${formatCurrency(recommendation.mandi.minPrice)} \u2014 ${formatCurrency(
-                recommendation.mandi.maxPrice
-              )} per kg`}
-            </Text>
-
-            <Text style={styles.marketMeta}>
-              {`\u{1F4CD} ${recommendation.mandi.distanceKm} km away  |  \u{1F69B} Est. cost ${formatCurrency(
-                recommendation.mandi.transportCost
-              )}`}
-            </Text>
-
-            <View style={styles.profitBox}>
-              <Text style={styles.profitLine}>
-                {`Local sale \u2192 ${formatCurrency(recommendation.mandi.localSale)}`}
-              </Text>
-              <Text style={styles.profitLine}>
-                {`${recommendation.mandi.marketName} \u2192 ${formatCurrency(
-                  recommendation.mandi.mandiSale
-                )}`}
-              </Text>
-              <Text style={styles.extraEarning}>
-                {`You earn ${formatCurrency(
-                  recommendation.mandi.extraEarnings
-                )} MORE \u2705`}
+        {isPendingBoth || loadingHarvest ? (
+          <SkeletonCard title={'\u{1F5D3}\uFE0F Best Harvest Window'} />
+        ) : (
+          <Card style={styles.card}>
+            <View style={[styles.cardHeader, styles.harvestHeader]}>
+              <Text style={styles.cardHeaderText}>
+                {'\u{1F5D3}\uFE0F Best Harvest Window'}
               </Text>
             </View>
-          </Card.Content>
-        </Card>
+            <Card.Content style={styles.cardBody}>
+              <Text style={styles.windowValue}>
+                {buildWindowText(harvestData?.harvest_window)}
+              </Text>
+              <Text style={styles.windowSubtitle}>
+                {harvestData?.risk_if_delayed || 'Window based on crop stage and current forecast.'}
+              </Text>
+              <ConfidenceIndicator score={harvestData?.confidence} />
+            </Card.Content>
+          </Card>
+        )}
+
+        {isPendingBoth || loadingMandi ? (
+          <SkeletonCard title={'\u{1F3EA} Best Mandi'} />
+        ) : (
+          <Card style={styles.card}>
+            <View style={[styles.cardHeader, styles.marketHeader]}>
+              <Text style={styles.cardHeaderText}>
+                {`\u{1F3EA} Sell at ${mandiData?.best_mandi || 'Best Mandi'}`}
+              </Text>
+            </View>
+            <Card.Content style={styles.cardBody}>
+              <Text style={styles.priceRange}>
+                {`${formatCurrency(mandiData?.expected_price_range?.[0])} — ${formatCurrency(
+                  mandiData?.expected_price_range?.[1]
+                )} per quintal`}
+              </Text>
+              <Text style={styles.marketMeta}>
+                {`\u{1F69B} Est. transport: ${formatCurrency(mandiData?.transport_cost)}`}
+              </Text>
+              <View style={styles.profitBox}>
+                <Text style={styles.profitLine}>
+                  {`Local sale \u2192 ${formatCurrency(
+                    mandiData?.net_profit_comparison?.local_mandi
+                  )}`}
+                </Text>
+                <Text style={styles.profitLine}>
+                  {`${mandiData?.best_mandi || 'Best mandi'} \u2192 ${formatCurrency(
+                    mandiData?.net_profit_comparison?.best_mandi
+                  )}`}
+                </Text>
+              </View>
+              <ConfidenceIndicator score={mandiData?.confidence} />
+            </Card.Content>
+          </Card>
+        )}
 
         <Card style={styles.card}>
           <TouchableOpacity
@@ -153,33 +254,42 @@ export default function RecommendationScreen({ navigation, route }) {
             onPress={() => setExpanded((prev) => !prev)}
             style={styles.whyHeaderRow}
           >
-            <Text style={styles.whyTitle}>
-              {'\u{1F50D} Why we recommend this'}
-            </Text>
+            <Text style={styles.whyTitle}>{'\u{1F50D} Why we recommend this'}</Text>
             <MaterialCommunityIcons
               name={expanded ? 'chevron-up' : 'chevron-down'}
               size={24}
               color={COLORS.text}
             />
           </TouchableOpacity>
-
           {expanded ? (
             <Card.Content style={styles.whyBody}>
-              {recommendation.reasons.map((reason) => (
-                <View key={reason.text} style={styles.reasonRow}>
-                  <Text style={styles.reasonIcon}>{reason.icon}</Text>
-                  <Text style={styles.reasonText}>{reason.text}</Text>
+              {loadingWhy ? (
+                <View style={styles.whyLoader}>
+                  <ActivityIndicator animating color={COLORS.primary} />
+                  <Text style={styles.loaderText}>Loading explainability reasons...</Text>
                 </View>
-              ))}
+              ) : (
+                <>
+                  {renderWhyReasons()}
+                  <Text style={styles.confidenceMessage}>
+                    {explanationData?.confidence_message}
+                  </Text>
+                  <ConfidenceIndicator score={explanationData?.confidence} />
+                </>
+              )}
             </Card.Content>
           ) : null}
         </Card>
 
-        {usingFallback ? (
-          <Text style={styles.fallbackText}>
-            Live APIs are unavailable right now, so fallback calculations are shown.
-          </Text>
-        ) : null}
+        <Button
+          mode="contained"
+          style={styles.spoilageButton}
+          contentStyle={styles.spoilageButtonContent}
+          buttonColor="#8D6E63"
+          onPress={openSpoilageRisk}
+        >
+          {'\u{1F4E6} Check Spoilage Risk'}
+        </Button>
       </ScrollView>
     </View>
   );
@@ -189,18 +299,6 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: COLORS.background,
-  },
-  loaderScreen: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.background,
-    paddingHorizontal: 24,
-  },
-  loaderText: {
-    marginTop: 14,
-    color: '#58656D',
-    fontSize: 15,
   },
   header: {
     backgroundColor: COLORS.card,
@@ -220,6 +318,19 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 36,
     rowGap: 14,
+  },
+  offlineBanner: {
+    backgroundColor: '#FFF1CC',
+    borderColor: '#F0CF72',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  offlineBannerText: {
+    color: '#7A5B00',
+    fontSize: 13,
+    fontWeight: '600',
   },
   card: {
     borderRadius: 16,
@@ -252,35 +363,19 @@ const styles = StyleSheet.create({
   },
   windowValue: {
     color: COLORS.text,
-    fontSize: 30,
-    lineHeight: 36,
+    fontSize: 27,
+    lineHeight: 34,
     fontWeight: '800',
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    columnGap: 8,
-    rowGap: 8,
-  },
-  badgePill: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: '#EAF4EE',
-  },
-  badgeText: {
-    color: '#24513F',
-    fontSize: 12,
-    fontWeight: '600',
   },
   windowSubtitle: {
     color: '#53606A',
     fontSize: 14,
+    lineHeight: 21,
   },
   priceRange: {
     color: COLORS.text,
-    fontSize: 28,
-    lineHeight: 34,
+    fontSize: 24,
+    lineHeight: 30,
     fontWeight: '800',
   },
   marketMeta: {
@@ -297,12 +392,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: 14,
     fontWeight: '600',
-  },
-  extraEarning: {
-    marginTop: 2,
-    color: '#0A8A3A',
-    fontSize: 15,
-    fontWeight: '800',
   },
   whyHeaderRow: {
     paddingHorizontal: 14,
@@ -321,6 +410,16 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     rowGap: 12,
   },
+  whyLoader: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  loaderText: {
+    marginTop: 10,
+    color: '#58656D',
+    fontSize: 14,
+  },
   reasonRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -329,6 +428,7 @@ const styles = StyleSheet.create({
   reasonIcon: {
     fontSize: 18,
     marginTop: 1,
+    color: COLORS.primary,
   },
   reasonText: {
     flex: 1,
@@ -336,11 +436,60 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
   },
-  fallbackText: {
-    color: '#5D6871',
-    fontSize: 12,
+  confidenceMessage: {
+    color: '#50616C',
+    fontSize: 13,
     lineHeight: 18,
-    textAlign: 'center',
-    paddingHorizontal: 10,
+  },
+  confidenceRow: {
+    marginTop: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    columnGap: 8,
+  },
+  confidenceDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+  },
+  confidenceText: {
+    color: '#3C4952',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  skeletonHeader: {
+    backgroundColor: '#DDE5EC',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  skeletonHeaderText: {
+    color: '#637180',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  skeletonLineWide: {
+    height: 18,
+    borderRadius: 10,
+    backgroundColor: '#E8EDF2',
+    width: '95%',
+  },
+  skeletonLineMid: {
+    height: 14,
+    borderRadius: 10,
+    backgroundColor: '#EDF2F6',
+    width: '72%',
+  },
+  skeletonLineShort: {
+    height: 14,
+    borderRadius: 10,
+    backgroundColor: '#EDF2F6',
+    width: '56%',
+  },
+  spoilageButton: {
+    borderRadius: 14,
+    marginTop: 6,
+  },
+  spoilageButtonContent: {
+    minHeight: 54,
   },
 });

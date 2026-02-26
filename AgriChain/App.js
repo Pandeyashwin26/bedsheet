@@ -11,6 +11,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import MarketScreen from './src/screens/MarketScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import RecommendationScreen from './src/screens/RecommendationScreen';
+import SpoilageScreen from './src/screens/SpoilageScreen';
 import { COLORS } from './src/theme/colors';
 
 const Tab = createBottomTabNavigator();
@@ -109,6 +110,7 @@ export default function App() {
               name="Recommendation"
               component={RecommendationScreen}
             />
+            <Stack.Screen name="Spoilage" component={SpoilageScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </PaperProvider>

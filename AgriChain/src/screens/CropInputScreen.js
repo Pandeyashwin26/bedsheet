@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import Slider from '@react-native-community/slider';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import * as Location from 'expo-location';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import {
   Appbar,
   Button,
@@ -17,6 +18,24 @@ import {
   STORAGE_OPTIONS,
 } from '../data/agriOptions';
 import { COLORS } from '../theme/colors';
+
+const CROP_STAGE_OPTIONS = [
+  {
+    icon: '\u{1F331}',
+    label: 'Early Stage',
+    value: 'early-stage',
+  },
+  {
+    icon: '\u{1F33F}',
+    label: 'Growing Well',
+    value: 'growing',
+  },
+  {
+    icon: '\u2705',
+    label: 'Ready to Harvest',
+    value: 'harvest-ready',
+  },
+];
 
 function PickerField({ label, placeholder, value, options, onSelect }) {
   const [menuVisible, setMenuVisible] = useState(false);
@@ -65,19 +84,101 @@ const formatDateForDisplay = (dateValue) =>
     year: 'numeric',
   }).format(new Date(dateValue));
 
+const matchDistrictName = (geocode) => {
+  if (!geocode) {
+    return '';
+  }
+
+  const candidates = [
+    geocode.district,
+    geocode.subregion,
+    geocode.city,
+    geocode.region,
+    geocode.name,
+  ]
+    .filter(Boolean)
+    .map((item) => String(item).trim().toLowerCase());
+
+  for (const candidate of candidates) {
+    const match = DISTRICT_OPTIONS.find((district) => {
+      const districtLower = district.toLowerCase();
+      return candidate.includes(districtLower) || districtLower.includes(candidate);
+    });
+    if (match) {
+      return match;
+    }
+  }
+  return '';
+};
+
 export default function CropInputScreen({ navigation }) {
   const [crop, setCrop] = useState('');
+  const [cropStage, setCropStage] = useState('');
   const [district, setDistrict] = useState('');
   const [soilType, setSoilType] = useState('');
   const [sowingDate, setSowingDate] = useState('');
   const [storageType, setStorageType] = useState('');
   const [transitHours, setTransitHours] = useState(12);
   const [submitted, setSubmitted] = useState(false);
+  const [detectingLocation, setDetectingLocation] = useState(false);
+  const [autoDetectedDistrict, setAutoDetectedDistrict] = useState('');
+  const [districtManualEdit, setDistrictManualEdit] = useState(false);
+  const [locationDenied, setLocationDenied] = useState(false);
+
+  const showDistrictPicker = locationDenied || districtManualEdit || !autoDetectedDistrict;
 
   const isValid = useMemo(
-    () => Boolean(crop && district && soilType && sowingDate && storageType),
-    [crop, district, soilType, sowingDate, storageType]
+    () =>
+      Boolean(crop && cropStage && district && soilType && sowingDate && storageType),
+    [crop, cropStage, district, soilType, sowingDate, storageType]
   );
+
+  useEffect(() => {
+    let mounted = true;
+
+    const detectDistrict = async () => {
+      setDetectingLocation(true);
+      try {
+        const permission = await Location.requestForegroundPermissionsAsync();
+        if (permission.status !== 'granted') {
+          if (mounted) {
+            setLocationDenied(true);
+            setDistrictManualEdit(true);
+          }
+          return;
+        }
+
+        const position = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        const places = await Location.reverseGeocodeAsync({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+        const matchedDistrict = matchDistrictName(places?.[0]);
+
+        if (mounted && matchedDistrict) {
+          setDistrict(matchedDistrict);
+          setAutoDetectedDistrict(matchedDistrict);
+          setDistrictManualEdit(false);
+          setLocationDenied(false);
+        }
+      } catch {
+        if (mounted) {
+          setDistrictManualEdit(true);
+        }
+      } finally {
+        if (mounted) {
+          setDetectingLocation(false);
+        }
+      }
+    };
+
+    detectDistrict();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const openDatePicker = () => {
     DateTimePickerAndroid.open({
@@ -100,6 +201,7 @@ export default function CropInputScreen({ navigation }) {
     navigation.navigate('Recommendation', {
       formData: {
         crop,
+        cropStage,
         district,
         soilType,
         sowingDate,
@@ -134,13 +236,70 @@ export default function CropInputScreen({ navigation }) {
               onSelect={setCrop}
             />
 
-            <PickerField
-              label="Your District"
-              placeholder="Choose district"
-              value={district}
-              options={DISTRICT_OPTIONS}
-              onSelect={setDistrict}
-            />
+            <View style={styles.fieldBlock}>
+              <Text style={styles.fieldLabel}>How is your crop right now?</Text>
+              <View style={styles.stageRow}>
+                {CROP_STAGE_OPTIONS.map((item) => {
+                  const selected = cropStage === item.value;
+                  return (
+                    <TouchableOpacity
+                      key={item.value}
+                      style={[
+                        styles.stageButton,
+                        selected ? styles.stageButtonActive : null,
+                      ]}
+                      activeOpacity={0.9}
+                      onPress={() => setCropStage(item.value)}
+                    >
+                      <Text style={styles.stageIcon}>{item.icon}</Text>
+                      <Text
+                        style={[
+                          styles.stageLabel,
+                          selected ? styles.stageLabelActive : null,
+                        ]}
+                      >
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {detectingLocation ? (
+              <Text style={styles.locationStatus}>Detecting your location...</Text>
+            ) : null}
+
+            {autoDetectedDistrict && !showDistrictPicker ? (
+              <View style={styles.autoDetectedRow}>
+                <Text style={styles.autoDetectedText}>
+                  {`\u{1F4CD} Auto-detected: ${autoDetectedDistrict}`}
+                </Text>
+                <Button
+                  compact
+                  mode="text"
+                  onPress={() => setDistrictManualEdit(true)}
+                >
+                  Edit
+                </Button>
+              </View>
+            ) : null}
+
+            {showDistrictPicker ? (
+              <PickerField
+                label="Your District"
+                placeholder="Choose district"
+                value={district}
+                options={DISTRICT_OPTIONS}
+                onSelect={setDistrict}
+              />
+            ) : null}
+
+            {locationDenied ? (
+              <Text style={styles.permissionHint}>
+                Location permission denied. Please select district manually.
+              </Text>
+            ) : null}
 
             <PickerField
               label="Soil Type"
@@ -265,6 +424,69 @@ const styles = StyleSheet.create({
   },
   placeholderText: {
     color: '#7A858F',
+  },
+  stageRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: 8,
+    rowGap: 8,
+  },
+  stageButton: {
+    width: '31%',
+    minHeight: 92,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#D1D9E0',
+    backgroundColor: '#F6F8FA',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    rowGap: 4,
+  },
+  stageButtonActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: '#E9F5EE',
+  },
+  stageIcon: {
+    fontSize: 26,
+  },
+  stageLabel: {
+    fontSize: 12,
+    color: '#47545F',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  stageLabelActive: {
+    color: COLORS.primary,
+  },
+  locationStatus: {
+    color: '#66727C',
+    fontSize: 13,
+    marginBottom: 10,
+  },
+  autoDetectedRow: {
+    marginBottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#EDF7F1',
+    borderWidth: 1,
+    borderColor: '#D3EAD9',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  autoDetectedText: {
+    color: '#1F513E',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  permissionHint: {
+    color: '#7A5B00',
+    fontSize: 12,
+    marginTop: -6,
+    marginBottom: 10,
   },
   sliderBlock: {
     marginTop: 6,

@@ -27,6 +27,7 @@ const ACTION_CARDS = [
     emoji: '\u{1F4E6}',
     title: 'Spoilage Risk',
     subtitle: 'Keep crops fresh',
+    route: 'Spoilage',
   },
   {
     emoji: '\u{1F3DB}\u{FE0F}',

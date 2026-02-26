@@ -374,5 +374,8 @@ export const getRecommendation = async (formData) => {
       weather: weatherData.source,
       mandi: mandiData.source,
     },
+    currentTempC: Number.isFinite(weatherData.days?.[0]?.tempC)
+      ? Math.round(weatherData.days[0].tempC)
+      : 36,
   };
 };

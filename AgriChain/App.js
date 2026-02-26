@@ -23,7 +23,7 @@ import SpoilageScreen from './src/screens/SpoilageScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
-import { COLORS } from './src/theme/colors';
+import { COLORS, ELEVATION } from './src/theme/colors';
 import { setupNotifications, showPermissionResult } from './src/services/notificationService';
 import { AriaProvider } from './src/context/AriaContext';
 import AriaOverlay from './src/components/AriaOverlay';
@@ -35,47 +35,50 @@ const navigationRef = createNavigationContainerRef();
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
+// ─── MD3 Paper Theme ──────────────────────────────────────────────────────────
 const paperTheme = {
   ...MD3LightTheme,
+  roundness: 12,
   colors: {
     ...MD3LightTheme.colors,
     primary: COLORS.primary,
-    secondary: COLORS.accent,
+    primaryContainer: COLORS.primaryContainer,
+    secondary: COLORS.secondary,
+    secondaryContainer: COLORS.secondaryContainer,
+    tertiary: COLORS.tertiary,
+    tertiaryContainer: COLORS.tertiaryContainer,
     background: COLORS.background,
-    surface: COLORS.card,
-    onSurface: COLORS.text,
-    error: COLORS.warning,
+    surface: COLORS.surface,
+    surfaceVariant: COLORS.surfaceVariant,
+    onSurface: COLORS.onSurface,
+    onSurfaceVariant: COLORS.onSurfaceVariant,
+    error: COLORS.error,
+    errorContainer: COLORS.errorContainer,
+    outline: COLORS.outline,
+    outlineVariant: COLORS.outlineVariant,
   },
 };
 
+// ─── Navigation Theme ─────────────────────────────────────────────────────────
 const navTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
     primary: COLORS.primary,
     background: COLORS.background,
-    card: COLORS.card,
-    text: COLORS.text,
-    border: '#DEE2E6',
-    notification: COLORS.warning,
+    card: COLORS.surface,
+    text: COLORS.onSurface,
+    border: COLORS.outlineVariant,
+    notification: COLORS.error,
   },
 };
 
-const getTabIcon = (routeName) => {
-  switch (routeName) {
-    case 'Home':
-      return 'home';
-    case 'Market':
-      return 'chart-line';
-    case 'Disease':
-      return 'microscope';
-    case 'ARIA':
-      return 'microphone';
-    case 'Profile':
-      return 'account';
-    default:
-      return 'circle';
-  }
+const TAB_ICONS = {
+  Home:    { active: 'home',        inactive: 'home-outline' },
+  Market:  { active: 'chart-line',  inactive: 'chart-line-variant' },
+  Disease: { active: 'leaf-circle', inactive: 'leaf-circle-outline' },
+  ARIA:    { active: 'microphone',  inactive: 'microphone-outline' },
+  Profile: { active: 'account-circle', inactive: 'account-circle-outline' },
 };
 
 function MainTabs() {
@@ -84,30 +87,37 @@ function MainTabs() {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: '#7A7A7A',
+        tabBarInactiveTintColor: COLORS.onSurfaceVariant,
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: '600',
+          letterSpacing: 0.4,
         },
         tabBarStyle: {
-          backgroundColor: COLORS.card,
+          backgroundColor: COLORS.surface,
           borderTopWidth: 0,
-          height: 70,
-          paddingTop: 8,
-          paddingBottom: 8,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.08,
-          shadowRadius: 8,
-          elevation: 10,
+          height: 68,
+          paddingTop: 6,
+          paddingBottom: 10,
+          ...ELEVATION.level2,
         },
-        tabBarIcon: ({ color, size }) => (
-          <MaterialCommunityIcons
-            name={getTabIcon(route.name)}
-            size={size + 1}
-            color={color}
-          />
-        ),
+        tabBarIcon: ({ color, focused }) => {
+          const icons = TAB_ICONS[route.name] || { active: 'circle', inactive: 'circle-outline' };
+          return (
+            <View style={focused ? {
+              backgroundColor: COLORS.primaryContainer,
+              borderRadius: 16,
+              paddingHorizontal: 16,
+              paddingVertical: 4,
+            } : undefined}>
+              <MaterialCommunityIcons
+                name={focused ? icons.active : icons.inactive}
+                size={24}
+                color={color}
+              />
+            </View>
+          );
+        },
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />

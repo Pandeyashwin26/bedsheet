@@ -1,6 +1,5 @@
 /**
- * AGRI-मित्र Registration Screen
- * ═══════════════════════════════════════════════════════════════════════════════
+ * AGRI-मित्र Registration Screen — Material Design 3
  */
 
 import React, { useState, useRef } from 'react';
@@ -19,7 +18,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS } from '../theme/colors';
+import { COLORS, ELEVATION, RADIUS, SPACING, TYPOGRAPHY } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -31,26 +30,16 @@ export default function RegisterScreen({ navigation }) {
   const { t } = useLanguage();
 
   const [form, setForm] = useState({
-    full_name: '',
-    phone: '',
-    password: '',
-    confirmPassword: '',
-    district: '',
-    state: 'Maharashtra',
-    main_crop: '',
-    farm_size_acres: '',
-    soil_type: '',
+    full_name: '', phone: '', password: '', confirmPassword: '',
+    district: '', state: 'Maharashtra', main_crop: '',
+    farm_size_acres: '', soil_type: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  const [step, setStep] = useState(1); // 1 = basic, 2 = farm details
+  const [step, setStep] = useState(1);
 
-  const refs = {
-    phone: useRef(null),
-    password: useRef(null),
-    confirm: useRef(null),
-  };
+  const refs = { phone: useRef(null), password: useRef(null), confirm: useRef(null) };
 
   const updateField = (key, val) => {
     setForm(prev => ({ ...prev, [key]: val }));
@@ -68,9 +57,7 @@ export default function RegisterScreen({ navigation }) {
     return Object.keys(e).length === 0;
   };
 
-  const handleNext = () => {
-    if (validateStep1()) setStep(2);
-  };
+  const handleNext = () => { if (validateStep1()) setStep(2); };
 
   const handleRegister = async () => {
     setLoading(true);
@@ -94,27 +81,31 @@ export default function RegisterScreen({ navigation }) {
     }
   };
 
+  const InputField = ({ icon, label, error, children }) => (
+    <>
+      <Text style={styles.label}>{label}</Text>
+      <View style={[styles.inputRow, error && styles.inputError]}>
+        <MaterialCommunityIcons name={icon} size={20} color={COLORS.primary} />
+        {children}
+      </View>
+      {error && <Text style={styles.errorText}>{error}</Text>}
+    </>
+  );
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="#F5F0E8" />
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* ── Logo Header ──────────────────────────────────────────── */}
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        {/* ── Logo ──────────────────────────────────────────────────── */}
         <View style={styles.header}>
-          <Image
-            source={require('../../assets/logo (2).jpeg')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <Image source={require('../../assets/logo (2).jpeg')} style={styles.logo} resizeMode="contain" />
           <Text style={styles.tagline}>{t('auth.createAccount')}</Text>
         </View>
 
-        {/* ── Progress indicator ────────────────────────────────────── */}
+        {/* ── Progress ──────────────────────────────────────────────── */}
         <View style={styles.progressRow}>
           <View style={[styles.progressDot, step >= 1 && styles.progressActive]} />
           <View style={[styles.progressBar, step >= 2 && styles.progressBarActive]} />
@@ -127,106 +118,48 @@ export default function RegisterScreen({ navigation }) {
             <>
               <Text style={styles.cardTitle}>{t('auth.basicInfo')}</Text>
 
-              {/* Full Name */}
-              <Text style={styles.label}>{t('auth.fullName')}</Text>
-              <View style={[styles.inputRow, errors.full_name && styles.inputError]}>
-                <MaterialCommunityIcons name="account" size={20} color={COLORS.primary} />
-                <TextInput
-                  style={styles.input}
-                  placeholder={t('auth.fullNamePlaceholder')}
-                  placeholderTextColor="#aaa"
-                  value={form.full_name}
-                  onChangeText={v => updateField('full_name', v)}
-                  returnKeyType="next"
-                  onSubmitEditing={() => refs.phone.current?.focus()}
-                />
-              </View>
-              {errors.full_name && <Text style={styles.errorText}>{errors.full_name}</Text>}
+              <InputField icon="account-outline" label={t('auth.fullName')} error={errors.full_name}>
+                <TextInput style={styles.input} placeholder={t('auth.fullNamePlaceholder')} placeholderTextColor={COLORS.onSurfaceVariant}
+                  value={form.full_name} onChangeText={v => updateField('full_name', v)}
+                  returnKeyType="next" onSubmitEditing={() => refs.phone.current?.focus()} />
+              </InputField>
 
-              {/* Phone */}
-              <Text style={styles.label}>{t('auth.phone')}</Text>
-              <View style={[styles.inputRow, errors.phone && styles.inputError]}>
-                <MaterialCommunityIcons name="phone" size={20} color={COLORS.primary} />
-                <TextInput
-                  ref={refs.phone}
-                  style={styles.input}
-                  placeholder="9876543210"
-                  placeholderTextColor="#aaa"
-                  keyboardType="phone-pad"
-                  maxLength={15}
-                  value={form.phone}
-                  onChangeText={v => updateField('phone', v)}
-                  returnKeyType="next"
-                  onSubmitEditing={() => refs.password.current?.focus()}
-                />
-              </View>
-              {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
+              <InputField icon="phone-outline" label={t('auth.phone')} error={errors.phone}>
+                <TextInput ref={refs.phone} style={styles.input} placeholder="9876543210" placeholderTextColor={COLORS.onSurfaceVariant}
+                  keyboardType="phone-pad" maxLength={15}
+                  value={form.phone} onChangeText={v => updateField('phone', v)}
+                  returnKeyType="next" onSubmitEditing={() => refs.password.current?.focus()} />
+              </InputField>
 
-              {/* Password */}
-              <Text style={styles.label}>{t('auth.password')}</Text>
-              <View style={[styles.inputRow, errors.password && styles.inputError]}>
-                <MaterialCommunityIcons name="lock" size={20} color={COLORS.primary} />
-                <TextInput
-                  ref={refs.password}
-                  style={styles.input}
-                  placeholder="••••••"
-                  placeholderTextColor="#aaa"
-                  secureTextEntry={!showPassword}
-                  value={form.password}
-                  onChangeText={v => updateField('password', v)}
-                  returnKeyType="next"
-                  onSubmitEditing={() => refs.confirm.current?.focus()}
-                />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  <MaterialCommunityIcons
-                    name={showPassword ? 'eye-off' : 'eye'}
-                    size={22}
-                    color="#999"
-                  />
+              <InputField icon="lock-outline" label={t('auth.password')} error={errors.password}>
+                <TextInput ref={refs.password} style={styles.input} placeholder="••••••" placeholderTextColor={COLORS.onSurfaceVariant}
+                  secureTextEntry={!showPassword} value={form.password} onChangeText={v => updateField('password', v)}
+                  returnKeyType="next" onSubmitEditing={() => refs.confirm.current?.focus()} />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
+                  <MaterialCommunityIcons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={22} color={COLORS.onSurfaceVariant} />
                 </TouchableOpacity>
-              </View>
-              {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+              </InputField>
 
-              {/* Confirm Password */}
-              <Text style={styles.label}>{t('auth.confirmPassword')}</Text>
-              <View style={[styles.inputRow, errors.confirmPassword && styles.inputError]}>
-                <MaterialCommunityIcons name="lock-check" size={20} color={COLORS.primary} />
-                <TextInput
-                  ref={refs.confirm}
-                  style={styles.input}
-                  placeholder="••••••"
-                  placeholderTextColor="#aaa"
-                  secureTextEntry={!showPassword}
-                  value={form.confirmPassword}
-                  onChangeText={v => updateField('confirmPassword', v)}
-                  returnKeyType="done"
-                />
-              </View>
-              {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
+              <InputField icon="lock-check-outline" label={t('auth.confirmPassword')} error={errors.confirmPassword}>
+                <TextInput ref={refs.confirm} style={styles.input} placeholder="••••••" placeholderTextColor={COLORS.onSurfaceVariant}
+                  secureTextEntry={!showPassword} value={form.confirmPassword} onChangeText={v => updateField('confirmPassword', v)}
+                  returnKeyType="done" />
+              </InputField>
 
               <TouchableOpacity style={styles.btn} onPress={handleNext} activeOpacity={0.8}>
                 <Text style={styles.btnText}>{t('auth.next')}</Text>
-                <MaterialCommunityIcons name="arrow-right" size={20} color="#fff" />
+                <MaterialCommunityIcons name="arrow-right" size={20} color={COLORS.onPrimary} />
               </TouchableOpacity>
             </>
           ) : (
             <>
               <Text style={styles.cardTitle}>{t('auth.farmDetails')}</Text>
 
-              {/* District */}
-              <Text style={styles.label}>{t('auth.district')}</Text>
-              <View style={styles.inputRow}>
-                <MaterialCommunityIcons name="map-marker" size={20} color={COLORS.primary} />
-                <TextInput
-                  style={styles.input}
-                  placeholder={t('auth.districtPlaceholder')}
-                  placeholderTextColor="#aaa"
-                  value={form.district}
-                  onChangeText={v => updateField('district', v)}
-                />
-              </View>
+              <InputField icon="map-marker-outline" label={t('auth.district')}>
+                <TextInput style={styles.input} placeholder={t('auth.districtPlaceholder')} placeholderTextColor={COLORS.onSurfaceVariant}
+                  value={form.district} onChangeText={v => updateField('district', v)} />
+              </InputField>
 
-              {/* Main Crop */}
               <Text style={styles.label}>{t('auth.mainCrop')}</Text>
               <View style={styles.chipRow}>
                 {CROPS.map(crop => (
@@ -242,21 +175,11 @@ export default function RegisterScreen({ navigation }) {
                 ))}
               </View>
 
-              {/* Farm Size */}
-              <Text style={styles.label}>{t('auth.farmSize')}</Text>
-              <View style={styles.inputRow}>
-                <MaterialCommunityIcons name="ruler-square" size={20} color={COLORS.primary} />
-                <TextInput
-                  style={styles.input}
-                  placeholder={t('auth.farmSizePlaceholder')}
-                  placeholderTextColor="#aaa"
-                  keyboardType="decimal-pad"
-                  value={form.farm_size_acres}
-                  onChangeText={v => updateField('farm_size_acres', v)}
-                />
-              </View>
+              <InputField icon="ruler-square" label={t('auth.farmSize')}>
+                <TextInput style={styles.input} placeholder={t('auth.farmSizePlaceholder')} placeholderTextColor={COLORS.onSurfaceVariant}
+                  keyboardType="decimal-pad" value={form.farm_size_acres} onChangeText={v => updateField('farm_size_acres', v)} />
+              </InputField>
 
-              {/* Soil Type */}
               <Text style={styles.label}>{t('auth.soilType')}</Text>
               <View style={styles.chipRow}>
                 {SOIL_TYPES.map(soil => (
@@ -272,41 +195,24 @@ export default function RegisterScreen({ navigation }) {
                 ))}
               </View>
 
-              {/* Action Buttons */}
               <View style={styles.actionRow}>
-                <TouchableOpacity
-                  style={styles.backBtn}
-                  onPress={() => setStep(1)}
-                  activeOpacity={0.8}
-                >
+                <TouchableOpacity style={styles.backBtn} onPress={() => setStep(1)} activeOpacity={0.8}>
                   <MaterialCommunityIcons name="arrow-left" size={20} color={COLORS.primary} />
                   <Text style={styles.backBtnText}>{t('auth.back')}</Text>
                 </TouchableOpacity>
-
                 <TouchableOpacity
                   style={[styles.btn, styles.registerBtn, loading && styles.btnDisabled]}
-                  onPress={handleRegister}
-                  disabled={loading}
-                  activeOpacity={0.8}
+                  onPress={handleRegister} disabled={loading} activeOpacity={0.8}
                 >
-                  {loading ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.btnText}>{t('auth.registerBtn')}</Text>
-                  )}
+                  {loading ? <ActivityIndicator color={COLORS.onPrimary} /> : <Text style={styles.btnText}>{t('auth.registerBtn')}</Text>}
                 </TouchableOpacity>
               </View>
             </>
           )}
 
-          {/* Already have account */}
-          <TouchableOpacity
-            style={styles.loginLink}
-            onPress={() => navigation.navigate('Login')}
-          >
+          <TouchableOpacity style={styles.loginLink} onPress={() => navigation.navigate('Login')}>
             <Text style={styles.loginLinkText}>
-              {t('auth.hasAccount')}{' '}
-              <Text style={styles.linkText}>{t('auth.loginNow')}</Text>
+              {t('auth.hasAccount')}{' '}<Text style={styles.linkText}>{t('auth.loginNow')}</Text>
             </Text>
           </TouchableOpacity>
         </View>
@@ -316,66 +222,63 @@ export default function RegisterScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F0E8' },
+  container: { flex: 1, backgroundColor: COLORS.background },
   scroll: { flexGrow: 1 },
 
-  header: { alignItems: 'center', paddingTop: 30, marginBottom: 10 },
+  header: { alignItems: 'center', paddingTop: 30, marginBottom: SPACING.sm },
   logo: { width: 180, height: 140 },
-  tagline: { fontSize: 13, color: '#666', marginTop: 2, fontStyle: 'italic' },
+  tagline: { ...TYPOGRAPHY.bodySmall, color: COLORS.onSurfaceVariant, marginTop: 2, fontStyle: 'italic' },
 
-  progressRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    marginBottom: 16,
-  },
-  progressDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#ccc' },
+  progressRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: SPACING.md },
+  progressDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: COLORS.outlineVariant },
   progressActive: { backgroundColor: COLORS.primary },
-  progressBar: { width: 50, height: 3, backgroundColor: '#ccc', marginHorizontal: 4 },
+  progressBar: { width: 50, height: 3, backgroundColor: COLORS.outlineVariant, marginHorizontal: 4 },
   progressBarActive: { backgroundColor: COLORS.primary },
 
   card: {
-    backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24,
-    flex: 1,
+    backgroundColor: COLORS.surface, borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl,
+    paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: SPACING.lg,
+    flex: 1, ...ELEVATION.level2,
   },
-  cardTitle: { fontSize: 20, fontWeight: '700', color: COLORS.text, marginBottom: 14, textAlign: 'center' },
+  cardTitle: { ...TYPOGRAPHY.titleLarge, color: COLORS.onSurface, fontWeight: '700', marginBottom: SPACING.md, textAlign: 'center' },
 
-  label: { fontSize: 13, fontWeight: '600', color: '#555', marginBottom: 6, marginTop: 12 },
+  label: { ...TYPOGRAPHY.labelMedium, color: COLORS.onSurfaceVariant, marginBottom: SPACING.xs, marginTop: SPACING.md },
   inputRow: {
     flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1.5, borderColor: '#E0E0E0', borderRadius: 12,
-    paddingHorizontal: 12, height: 50, backgroundColor: '#FAFAFA',
+    borderWidth: 1.5, borderColor: COLORS.outline, borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.md, height: 52, backgroundColor: COLORS.surfaceVariant,
   },
-  inputError: { borderColor: COLORS.warning },
-  input: { flex: 1, fontSize: 16, color: COLORS.text, marginLeft: 10 },
-  errorText: { color: COLORS.warning, fontSize: 12, marginTop: 4 },
+  inputError: { borderColor: COLORS.error },
+  input: { flex: 1, ...TYPOGRAPHY.bodyLarge, color: COLORS.onSurface, marginLeft: SPACING.sm },
+  errorText: { ...TYPOGRAPHY.labelSmall, color: COLORS.error, marginTop: SPACING.xs },
 
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm, marginTop: SPACING.xs },
   chip: {
-    paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 20, borderWidth: 1.5, borderColor: '#E0E0E0',
-    backgroundColor: '#FAFAFA',
+    paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.full, borderWidth: 1.5, borderColor: COLORS.outline,
+    backgroundColor: COLORS.surfaceVariant,
   },
   chipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  chipText: { fontSize: 13, color: '#555' },
-  chipTextActive: { color: '#fff', fontWeight: '600' },
+  chipText: { ...TYPOGRAPHY.labelMedium, color: COLORS.onSurfaceVariant },
+  chipTextActive: { color: COLORS.onPrimary, fontWeight: '600' },
 
   btn: {
-    backgroundColor: COLORS.primary, borderRadius: 12, height: 52,
-    justifyContent: 'center', alignItems: 'center', marginTop: 20,
-    flexDirection: 'row', elevation: 2, gap: 6,
+    backgroundColor: COLORS.primary, borderRadius: RADIUS.md, height: 52,
+    justifyContent: 'center', alignItems: 'center', marginTop: SPACING.lg,
+    flexDirection: 'row', ...ELEVATION.level1, gap: SPACING.xs,
   },
   registerBtn: { flex: 1 },
   btnDisabled: { opacity: 0.7 },
-  btnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  btnText: { ...TYPOGRAPHY.labelLarge, color: COLORS.onPrimary, fontWeight: '700' },
 
-  actionRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 20 },
+  actionRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, marginTop: SPACING.lg },
   backBtn: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, height: 52,
-    borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.primary, gap: 4,
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.md, height: 52,
+    borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.primary, gap: SPACING.xs,
   },
-  backBtnText: { color: COLORS.primary, fontSize: 15, fontWeight: '600' },
+  backBtnText: { ...TYPOGRAPHY.labelLarge, color: COLORS.primary, fontWeight: '600' },
 
-  loginLink: { alignItems: 'center', paddingVertical: 14, marginTop: 8 },
-  loginLinkText: { fontSize: 14, color: '#666' },
+  loginLink: { alignItems: 'center', paddingVertical: SPACING.md, marginTop: SPACING.sm },
+  loginLinkText: { ...TYPOGRAPHY.bodyMedium, color: COLORS.onSurfaceVariant },
   linkText: { color: COLORS.primary, fontWeight: '700' },
 });

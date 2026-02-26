@@ -23,14 +23,22 @@ const GEMINI_URL =
  * ───────────────────────────────────────────────────────────────────────────── */
 
 let _Audio = null;
+let _audioChecked = false;
 
 const ensureAudio = async () => {
   if (_Audio) return _Audio;
+  if (_audioChecked) return null; // already failed once
+  _audioChecked = true;
   try {
-    const mod = await import('expo-av');
-    _Audio = mod.Audio;
-    return _Audio;
-  } catch {
+    // Use require() inside try/catch — Metro won't crash if native module missing
+    const mod = require('expo-av');
+    if (mod && mod.Audio) {
+      _Audio = mod.Audio;
+      return _Audio;
+    }
+    return null;
+  } catch (e) {
+    console.log('[AriaVoice] expo-av not available:', e.message);
     return null;
   }
 };

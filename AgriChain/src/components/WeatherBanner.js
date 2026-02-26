@@ -1,104 +1,83 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
-import { COLORS } from '../theme/colors';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { COLORS, ELEVATION, RADIUS, SPACING, TYPOGRAPHY } from '../theme/colors';
 import { useLanguage } from '../context/LanguageContext';
+import { fetchCurrentWeather } from '../services/apiService';
 
-const GOOGLE_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_API_KEY || '';
+const WEATHER_ICONS = {
+  rain:     { name: 'weather-pouring',  color: '#C62828', bg: '#FFEBEE' },
+  heat:     { name: 'thermometer-high', color: '#E65100', bg: '#FFF3E0' },
+  allclear: { name: 'weather-sunny',    color: '#2E7D32', bg: '#E8F5E9' },
+};
 
-export default function WeatherBanner({ district = 'Nashik', cropContext = {}, onPress }) {
+export default function WeatherBanner({ district = 'Nashik', onPress }) {
     const { t } = useLanguage();
-    const [alert, setAlert] = useState(null);
-
-    // Alert templates based on weather + crop context
-    const generateAlerts = (weatherData, ctx) => {
-        const alerts = [];
-        const { temp, rain_mm } = weatherData;
-
-        if (rain_mm > 5) {
-            alerts.push({
-                id: 'rain', type: 'weather', urgency: 1,
-                color: '#C62828', bgColor: '#FFEBEE', borderColor: '#EF9A9A',
-                icon: '🌧️',
-                message: t('weather.rainAlert'),
-            });
-        }
-
-        if (temp > 38) {
-            alerts.push({
-                id: 'heat', type: 'weather', urgency: 2,
-                color: '#E65100', bgColor: '#FFF3E0', borderColor: '#FFCC80',
-                icon: '🌡️',
-                message: t('weather.heatAlert', { temp: Math.round(temp) }),
-            });
-        }
-
-        if (ctx?.priceSpike) {
-            alerts.push({
-                id: 'price', type: 'price', urgency: 3,
-                color: '#2E7D32', bgColor: '#E8F5E9', borderColor: '#A5D6A7',
-                icon: '📈',
-                message: t('weather.priceSpike', {
-                    district: ctx.district || 'Nashik',
-                    percent: ctx.spikePercent || 12,
-                }),
-            });
-        }
-
-        if (alerts.length === 0) {
-            alerts.push({
-                id: 'allclear', type: 'info', urgency: 10,
-                color: '#2E7D32', bgColor: '#E8F5E9', borderColor: '#A5D6A7',
-                icon: '🟢',
-                message: t('weather.allClear'),
-            });
-        }
-
-        return alerts.sort((a, b) => a.urgency - b.urgency);
-    };
-
-    // Simulated weather fetch
-    const fetchWeatherData = async (d) => {
-        try {
-            const isMonsoon = new Date().getMonth() >= 5 && new Date().getMonth() <= 9;
-            return {
-                temp: 28 + Math.random() * 15,
-                rain_mm: isMonsoon ? Math.random() * 12 : Math.random() * 3,
-                humidity: 50 + Math.random() * 40,
-                wind_speed: 5 + Math.random() * 15,
-                description: isMonsoon ? t('weather.cloudy') : t('weather.clearWeather'),
-            };
-        } catch {
-            return { temp: 32, rain_mm: 0, humidity: 60, wind_speed: 8, description: t('weather.dataUnavailable') };
-        }
-    };
+    const [weather, setWeather] = useState(null);
+    const [alertInfo, setAlertInfo] = useState(null);
 
     useEffect(() => {
+        let cancelled = false;
         (async () => {
-            const weather = await fetchWeatherData(district);
-            const alerts = generateAlerts(weather, cropContext);
-            setAlert(alerts[0]);
-        })();
-    }, [district, cropContext]);
+            try {
+                const result = await fetchCurrentWeather(district);
+                if (cancelled) return;
+                const data = {
+                    temp: result.temp ?? 0,
+                    rain_mm: result.rain_mm ?? 0,
+                    humidity: result.humidity ?? 0,
+                    windspeed: result.windspeed ?? 0,
+                    description: result.description ?? '',
+                };
+                setWeather(data);
 
-    if (!alert) return null;
+                // Determine alert type
+                if (data.rain_mm > 5) {
+                    setAlertInfo({ ...WEATHER_ICONS.rain, message: t('weather.rainAlert') });
+                } else if (data.temp > 38) {
+                    setAlertInfo({ ...WEATHER_ICONS.heat, message: t('weather.heatAlert', { temp: Math.round(data.temp) }) });
+                } else {
+                    setAlertInfo({ ...WEATHER_ICONS.allclear, message: t('weather.allClear') });
+                }
+            } catch {
+                if (!cancelled) {
+                    setAlertInfo({ ...WEATHER_ICONS.allclear, message: t('weather.allClear') });
+                }
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [district]);
+
+    if (!weather && !alertInfo) return null;
 
     return (
-        <TouchableOpacity
-            style={[
-                styles.banner,
-                { backgroundColor: alert.bgColor, borderColor: alert.borderColor },
-            ]}
-            activeOpacity={0.85}
-            onPress={onPress}
-        >
-            <Text style={styles.bannerIcon}>{alert.icon}</Text>
-            <View style={styles.bannerContent}>
-                <Text style={[styles.bannerText, { color: alert.color }]} numberOfLines={3}>
-                    {alert.message}
-                </Text>
-                <Text style={styles.tapHint}>{t('weather.tapForAlerts')}</Text>
-            </View>
+        <TouchableOpacity style={styles.banner} activeOpacity={0.75} onPress={onPress}>
+            {/* Live temperature */}
+            {weather && (
+                <View style={styles.tempSection}>
+                    <Text style={styles.tempValue}>{Math.round(weather.temp)}°</Text>
+                    <Text style={styles.tempDesc} numberOfLines={1}>{weather.description || district}</Text>
+                </View>
+            )}
+
+            {/* Divider */}
+            <View style={styles.divider} />
+
+            {/* Alert */}
+            {alertInfo && (
+                <View style={styles.alertSection}>
+                    <View style={[styles.alertIconWrap, { backgroundColor: alertInfo.bg }]}>
+                        <MaterialCommunityIcons name={alertInfo.name} size={20} color={alertInfo.color} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={[styles.alertText, { color: alertInfo.color }]} numberOfLines={2}>
+                            {alertInfo.message}
+                        </Text>
+                        <Text style={styles.tapHint}>{t('weather.tapForAlerts')}</Text>
+                    </View>
+                </View>
+            )}
         </TouchableOpacity>
     );
 }
@@ -106,23 +85,55 @@ export default function WeatherBanner({ district = 'Nashik', cropContext = {}, o
 const styles = StyleSheet.create({
     banner: {
         flexDirection: 'row',
-        alignItems: 'flex-start',
-        borderRadius: 14,
-        padding: 14,
-        borderWidth: 1,
-        columnGap: 10,
+        alignItems: 'center',
+        backgroundColor: COLORS.surface,
+        borderRadius: RADIUS.lg,
+        padding: SPACING.md,
+        ...ELEVATION.level1,
     },
-    bannerIcon: { fontSize: 24, marginTop: 2 },
-    bannerContent: { flex: 1 },
-    bannerText: {
-        fontSize: 14,
+    tempSection: {
+        alignItems: 'center',
+        paddingRight: SPACING.md,
+    },
+    tempValue: {
+        ...TYPOGRAPHY.headlineMedium,
+        color: COLORS.primary,
+        fontWeight: '800',
+    },
+    tempDesc: {
+        ...TYPOGRAPHY.labelSmall,
+        color: COLORS.onSurfaceVariant,
+        marginTop: 2,
+        textTransform: 'capitalize',
+    },
+    divider: {
+        width: 1,
+        height: 40,
+        backgroundColor: COLORS.outline,
+        marginRight: SPACING.md,
+        opacity: 0.3,
+    },
+    alertSection: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACING.sm,
+    },
+    alertIconWrap: {
+        width: 36,
+        height: 36,
+        borderRadius: RADIUS.sm,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    alertText: {
+        ...TYPOGRAPHY.bodySmall,
         fontWeight: '700',
-        lineHeight: 22,
+        lineHeight: 18,
     },
     tapHint: {
-        fontSize: 12,
-        color: '#7A8A96',
-        marginTop: 4,
-        fontWeight: '600',
+        ...TYPOGRAPHY.labelSmall,
+        color: COLORS.onSurfaceVariant,
+        marginTop: 2,
     },
 });

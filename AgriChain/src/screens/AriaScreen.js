@@ -236,10 +236,14 @@ export default function ARIAScreen({ route }) {
       return audioApiRef.current;
     }
     try {
-      const module = await import('expo-av');
-      audioApiRef.current = module.Audio;
-      return audioApiRef.current;
-    } catch {
+      const mod = require('expo-av');
+      if (mod && mod.Audio) {
+        audioApiRef.current = mod.Audio;
+        return audioApiRef.current;
+      }
+      return null;
+    } catch (e) {
+      console.log('[ARIA] expo-av not available:', e.message);
       return null;
     }
   };
@@ -311,7 +315,8 @@ export default function ARIAScreen({ route }) {
         languageCode: selectedLanguage.code,
       });
       appendAssistantMessage(reply, selectedLanguage.code);
-    } catch {
+    } catch (err) {
+      console.warn('[AriaScreen] fetchAriaReply failed:', err?.message || err);
       appendAssistantMessage(
         getAriaFallbackReply(selectedLanguage.code),
         selectedLanguage.code

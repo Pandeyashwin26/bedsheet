@@ -98,6 +98,7 @@ export default {
     updatePlan: 'Update Crop Plan 📋',
     scanAnother: 'Scan Another Photo',
     photoSaved: 'Photo saved. Our expert will review in 2 hours.',
+    retryAnalysis: 'Retry Analysis',
     checkInternet: 'Check internet connection or try later',
     cameraPermission: '📷 Camera permission required\nPlease allow in Settings',
     givePermission: 'Give Permission',

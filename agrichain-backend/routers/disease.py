@@ -79,7 +79,7 @@ async def scan_disease(payload: ScanRequest) -> Dict[str, Any]:
         raise HTTPException(status_code=400, detail="Invalid base64 image data.")
 
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 HF_MODEL_URL,
                 headers={"Authorization": f"Bearer {HF_TOKEN}"},

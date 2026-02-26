@@ -15,6 +15,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { COLORS } from '../theme/colors';
 import { useLanguage } from '../context/LanguageContext';
+import { scanDisease } from '../services/apiService';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CAMERA_HEIGHT = 280;
@@ -127,33 +128,61 @@ export default function DiseaseScreen({ navigation }) {
                 encoding: FileSystem.EncodingType.Base64,
             });
 
-            const response = await fetch(HF_URL, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${HF_TOKEN}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ inputs: base64 }),
-            });
+            // ── Strategy 1: Use backend API (recommended) ──
+            const backendResult = await scanDisease(base64);
 
-            if (!response.ok) throw new Error('API error');
-
-            const data = await response.json();
-            if (Array.isArray(data) && data.length > 0) {
-                const topPrediction = Array.isArray(data[0]) ? data[0][0] : data[0];
+            if (backendResult?.success) {
                 setResult({
-                    label: topPrediction.label,
-                    confidence: topPrediction.score,
+                    label: backendResult.disease_label,
+                    confidence: backendResult.confidence,
                     success: true,
+                    diseaseName: backendResult.disease_name,
+                    isHealthy: backendResult.is_healthy,
+                    treatments: backendResult.treatments,
+                    impact: backendResult.impact,
                 });
-            } else {
-                throw new Error('Invalid response');
+                return;
             }
-        } catch {
+
+            // ── Strategy 2: Direct HuggingFace call (fallback) ──
+            if (HF_TOKEN) {
+                const response = await fetch(HF_URL, {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${HF_TOKEN}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ inputs: base64 }),
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (Array.isArray(data) && data.length > 0) {
+                        const topPrediction = Array.isArray(data[0]) ? data[0][0] : data[0];
+                        setResult({
+                            label: topPrediction.label,
+                            confidence: topPrediction.score,
+                            success: true,
+                        });
+                        return;
+                    }
+                }
+            }
+
+            // ── Both strategies failed ──
             setResult({
                 label: null,
                 confidence: 0,
                 success: false,
+                errorMessage: backendResult?.message || 'Unable to analyze image. Please check your internet connection.',
+            });
+        } catch (err) {
+            if (__DEV__) console.warn('Disease analysis error:', err);
+            setResult({
+                label: null,
+                confidence: 0,
+                success: false,
+                errorMessage: 'Analysis failed. Please try again.',
             });
         } finally {
             setLoading(false);
@@ -165,9 +194,11 @@ export default function DiseaseScreen({ navigation }) {
         setResult(null);
     };
 
-    const healthy = result?.success && isHealthy(result.label);
-    const diseaseName = result?.success ? getDiseaseDisplayName(result.label) : null;
-    const treatments = result?.success ? getTreatments(result.label) : [];
+    const healthy = result?.success && (result.isHealthy || isHealthy(result.label));
+    const diseaseName = result?.success ? (result.diseaseName || getDiseaseDisplayName(result.label)) : null;
+    const treatments = result?.success
+        ? (result.treatments || getTreatments(result.label))
+        : [];
     const confidencePercent = result?.confidence ? Math.round(result.confidence * 100) : 0;
 
     return (
@@ -273,7 +304,7 @@ export default function DiseaseScreen({ navigation }) {
                                 {!healthy ? (
                                     <View style={styles.impactBox}>
                                         <Text style={styles.impactText}>
-                                            {tr('disease.impact')}
+                                            {result.impact || tr('disease.impact')}
                                         </Text>
                                     </View>
                                 ) : null}
@@ -323,14 +354,18 @@ export default function DiseaseScreen({ navigation }) {
                 {result && !result.success ? (
                     <Card style={styles.card}>
                         <Card.Content style={styles.failContent}>
-                            <Text style={styles.failEmoji}>📸</Text>
+                            <Text style={styles.failEmoji}>⚠️</Text>
                             <Text style={styles.failTitle}>
-                                {tr('disease.photoSaved')}
+                                {result.errorMessage || tr('disease.photoSaved')}
                             </Text>
                             <Text style={styles.failSubtitle}>
                                 {tr('disease.checkInternet')}
                             </Text>
-                            <Button mode="contained" onPress={retake} buttonColor={COLORS.accent}>
+                            <Button mode="contained" onPress={analyseImage} buttonColor={COLORS.primary}
+                                style={{ marginBottom: 8 }}>
+                                {'🔄 ' + (tr('disease.retryAnalysis') || 'Retry Analysis')}
+                            </Button>
+                            <Button mode="outlined" onPress={retake}>
                                 {tr('disease.retake')}
                             </Button>
                         </Card.Content>

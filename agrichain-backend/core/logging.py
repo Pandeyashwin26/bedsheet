@@ -36,8 +36,11 @@ def setup_logging() -> None:
         renderer = structlog.processors.JSONRenderer()
     else:
         # Human-readable format for development
+        # Disable colors on Windows to avoid colorama recursive-write crashes
+        import os
+        use_colors = os.name != "nt" and not os.environ.get("NO_COLOR")
         renderer = structlog.dev.ConsoleRenderer(
-            colors=True,
+            colors=use_colors,
             exception_formatter=structlog.dev.plain_traceback,
         )
 

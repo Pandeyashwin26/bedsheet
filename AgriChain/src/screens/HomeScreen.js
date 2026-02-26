@@ -7,55 +7,63 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS } from '../theme/colors';
+import { COLORS, ELEVATION, RADIUS, SPACING, TYPOGRAPHY } from '../theme/colors';
 import WeatherBanner from '../components/WeatherBanner';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import { useAuth } from '../context/AuthContext';
+
+const ACTION_CARDS = [
+  { icon: 'calendar-check',     color: '#1B5E20', bg: '#E8F5E9', titleKey: 'home.harvestAdvisor', subtitleKey: 'home.harvestAdvisorSub', route: 'CropInput' },
+  { icon: 'store',              color: '#0277BD', bg: '#E1F5FE', titleKey: 'home.bestMandi',      subtitleKey: 'home.bestMandiSub',      tab: 'Market' },
+  { icon: 'package-variant',    color: '#E65100', bg: '#FFF3E0', titleKey: 'home.spoilageRisk',   subtitleKey: 'home.spoilageRiskSub',   route: 'Spoilage' },
+  { icon: 'leaf-circle-outline',color: '#2E7D32', bg: '#F1F8E9', titleKey: 'home.diseaseScanner', subtitleKey: 'home.diseaseScannerSub', tab: 'Disease' },
+  { icon: 'bank',               color: '#4527A0', bg: '#EDE7F6', titleKey: 'home.govtSchemes',    subtitleKey: 'home.govtSchemesSub',    route: 'Schemes' },
+  { icon: 'bell-ring-outline',  color: '#C62828', bg: '#FFEBEE', titleKey: 'home.smartAlerts',    subtitleKey: 'home.smartAlertsSub',    route: 'Alerts' },
+];
 
 export default function HomeScreen({ navigation }) {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const district = user?.district || 'Nashik';
 
-  const ACTION_CARDS = [
-    { emoji: '\u{1F4C5}', titleKey: 'home.harvestAdvisor', subtitleKey: 'home.harvestAdvisorSub', route: 'CropInput' },
-    { emoji: '\u{1F4B0}', titleKey: 'home.bestMandi', subtitleKey: 'home.bestMandiSub', tab: 'Market' },
-    { emoji: '\u{1F4E6}', titleKey: 'home.spoilageRisk', subtitleKey: 'home.spoilageRiskSub', route: 'Spoilage' },
-    { emoji: '\u{1F52C}', titleKey: 'home.diseaseScanner', subtitleKey: 'home.diseaseScannerSub', tab: 'Disease' },
-    { emoji: '\u{1F3DB}\u{FE0F}', titleKey: 'home.govtSchemes', subtitleKey: 'home.govtSchemesSub', route: 'Schemes' },
-    { emoji: '\u{1F514}', titleKey: 'home.smartAlerts', subtitleKey: 'home.smartAlertsSub', route: 'Alerts' },
-  ];
   const openAriaAssistant = () => {
-    navigation.navigate('ARIA', {
-      context: {
-        crop: 'Onion',
-        district: 'Nashik',
-        risk_category: 'Medium',
-        last_recommendation: 'Review latest market recommendation',
-      },
-    });
+    navigation.navigate('ARIA');
   };
 
   const handleCardPress = (card) => {
-    if (card.route) {
-      navigation.navigate(card.route);
-    } else if (card.tab) {
-      navigation.navigate('MainTabs', { screen: card.tab });
-    }
+    if (card.route) navigation.navigate(card.route);
+    else if (card.tab) navigation.navigate('MainTabs', { screen: card.tab });
+  };
+
+  const greeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return t('home.greeting');
+    if (h < 17) return t('home.greeting');
+    return t('home.greeting');
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
 
+      {/* ── Header ─────────────────────────────────────────────────── */}
       <LinearGradient
-        colors={[COLORS.primary, COLORS.accent]}
+        colors={[COLORS.primary, '#2E7D32']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.header}
       >
         <View style={styles.topBar}>
-          <Text style={styles.brand}>{t('common.appName')}</Text>
+          <View>
+            <Text style={styles.brandLabel}>{t('common.appName')}</Text>
+            <Text style={styles.brandSub}>
+              {user?.full_name ? `${user.full_name} • ${district}` : district}
+            </Text>
+          </View>
           <LanguageSwitcher compact />
         </View>
       </LinearGradient>
@@ -64,43 +72,44 @@ export default function HomeScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
       >
-        {/* Weather Banner */}
+        {/* ── Weather ─────────────────────────────────────────────── */}
         <WeatherBanner
-          district="Nashik"
-          cropContext={{ priceSpike: true, district: 'Nashik', spikePercent: 12 }}
+          district={district}
           onPress={() => navigation.navigate('Alerts')}
         />
 
+        {/* ── Greeting Card ───────────────────────────────────────── */}
         <View style={styles.greetingCard}>
-          <Text style={styles.greetingTitle}>{t('home.greeting')}</Text>
-          <Text style={styles.greetingSubtitle}>
-            {t('home.subtitle')}
-          </Text>
+          <Text style={styles.greetingTitle}>{greeting()}</Text>
+          <Text style={styles.greetingSubtitle}>{t('home.subtitle')}</Text>
         </View>
 
+        {/* ── Action Grid ─────────────────────────────────────────── */}
         <View style={styles.grid}>
           {ACTION_CARDS.map((card) => (
             <TouchableOpacity
               key={card.titleKey}
               style={styles.actionCard}
-              activeOpacity={0.85}
+              activeOpacity={0.7}
               onPress={() => handleCardPress(card)}
             >
-              <Text style={styles.cardEmoji}>{card.emoji}</Text>
-              <View style={styles.cardTextBlock}>
-                <Text style={styles.cardTitle}>{t(card.titleKey)}</Text>
-                <Text style={styles.cardSubtitle}>{t(card.subtitleKey)}</Text>
+              <View style={[styles.cardIconWrap, { backgroundColor: card.bg }]}>
+                <MaterialCommunityIcons name={card.icon} size={28} color={card.color} />
               </View>
+              <Text style={styles.cardTitle} numberOfLines={1}>{t(card.titleKey)}</Text>
+              <Text style={styles.cardSubtitle} numberOfLines={2}>{t(card.subtitleKey)}</Text>
             </TouchableOpacity>
           ))}
         </View>
       </ScrollView>
 
+      {/* ── ARIA FAB ──────────────────────────────────────────────── */}
       <TouchableOpacity
         style={styles.ariaFab}
-        activeOpacity={0.9}
+        activeOpacity={0.85}
         onPress={openAriaAssistant}
       >
+        <MaterialCommunityIcons name="robot-outline" size={22} color="#fff" />
         <Text style={styles.ariaFabText}>{t('home.ariaFab')}</Text>
       </TouchableOpacity>
     </SafeAreaView>
@@ -110,109 +119,102 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.primary,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 22,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    overflow: 'hidden',
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.lg,
   },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  brand: {
-    color: COLORS.card,
-    fontSize: 27,
+  brandLabel: {
+    ...TYPOGRAPHY.titleLarge,
+    color: COLORS.onPrimary,
     fontWeight: '800',
   },
-  languageToggle: {
-    color: '#E5F4EC',
-    fontSize: 15,
-    fontWeight: '700',
+  brandSub: {
+    ...TYPOGRAPHY.bodySmall,
+    color: 'rgba(255,255,255,0.75)',
+    marginTop: 2,
   },
   contentContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 96,
-    rowGap: 16,
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.lg,
+    paddingBottom: 100,
+    minHeight: '100%',
   },
   greetingCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
+    marginTop: SPACING.md,
+    ...ELEVATION.level1,
   },
   greetingTitle: {
-    fontSize: 24,
+    ...TYPOGRAPHY.headlineSmall,
+    color: COLORS.onSurface,
     fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 6,
   },
   greetingSubtitle: {
-    fontSize: 15,
-    color: '#4F5B62',
+    ...TYPOGRAPHY.bodyMedium,
+    color: COLORS.onSurfaceVariant,
+    marginTop: SPACING.xs,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    rowGap: 16,
+    marginTop: SPACING.lg,
+    rowGap: SPACING.md,
   },
   actionCard: {
-    width: 150,
-    height: 150,
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 14,
-    justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
+    width: '48%',
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    ...ELEVATION.level1,
   },
-  cardEmoji: {
-    fontSize: 34,
-  },
-  cardTextBlock: {
-    rowGap: 4,
+  cardIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: RADIUS.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
   },
   cardTitle: {
-    fontSize: 17,
+    ...TYPOGRAPHY.titleSmall,
+    color: COLORS.onSurface,
     fontWeight: '700',
-    color: COLORS.text,
   },
   cardSubtitle: {
-    fontSize: 13,
-    color: '#5D6A72',
-    lineHeight: 18,
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.onSurfaceVariant,
+    marginTop: 2,
   },
   ariaFab: {
     position: 'absolute',
-    right: 18,
-    bottom: 92,
-    borderRadius: 999,
+    right: SPACING.md,
+    bottom: 88,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    borderRadius: RADIUS.lg,
     backgroundColor: COLORS.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.16,
-    shadowRadius: 8,
-    elevation: 6,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    ...ELEVATION.level3,
   },
   ariaFabText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 13,
+    ...TYPOGRAPHY.labelLarge,
+    color: COLORS.onPrimary,
+    fontWeight: '700',
   },
 });

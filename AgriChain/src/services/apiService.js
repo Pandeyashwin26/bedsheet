@@ -425,6 +425,59 @@ export const classifyConfidence = (score) => {
 export const API_BASE_URL = BASE_URL;
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// Weather API — Real-time weather from backend (Open-Meteo powered)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Fetch real-time current weather for a district.
+ * @param {string} district - District name (e.g. "Nashik")
+ * @returns {Promise<{temp, humidity, rain_mm, description, windspeed, source}>}
+ */
+export const fetchCurrentWeather = async (district = 'nashik') => {
+  const cacheKey = `${CACHE_PREFIX}:weather_current:${district.toLowerCase()}`;
+  try {
+    const response = await apiClient.get(`/api/weather/current/${encodeURIComponent(district.toLowerCase())}`);
+    const data = response?.data || {};
+    await writeCachedPayload(cacheKey, data);
+    return withMeta(data, 'network');
+  } catch (error) {
+    if (__DEV__) console.warn('Current weather fetch failed:', error.message);
+    const cached = await readCachedPayload(cacheKey);
+    if (cached) return withMeta(cached, 'cache');
+    return withMeta({
+      temp: 32, humidity: 60, rain_mm: 0, description: 'Data unavailable',
+      windspeed: 0, source: 'mock',
+    }, 'mock');
+  }
+};
+
+/**
+ * Fetch full weather forecast and alerts for a district.
+ * @param {string} district - District name (e.g. "Nashik")
+ * @returns {Promise<{temp_min, temp_max, avg_temp, humidity, rainfall_mm, alerts, current, ...}>}
+ */
+export const fetchWeatherForecast = async (district = 'nashik') => {
+  const cacheKey = `${CACHE_PREFIX}:weather_forecast:${district.toLowerCase()}`;
+  try {
+    const response = await apiClient.get(`/api/weather/${encodeURIComponent(district.toLowerCase())}`);
+    const data = response?.data || {};
+    await writeCachedPayload(cacheKey, data);
+    return withMeta(data, 'network');
+  } catch (error) {
+    if (__DEV__) console.warn('Weather forecast fetch failed:', error.message);
+    const cached = await readCachedPayload(cacheKey);
+    if (cached) return withMeta(cached, 'cache');
+    return withMeta({
+      temp_min: 25, temp_max: 35, avg_temp: 30, humidity: 60, rainfall_mm: 0,
+      rain_in_3days: false, rain_in_7days: false, extreme_weather: false,
+      alerts: [{ type: 'clear', urgency: 10, color: 'green', message: 'Weather data unavailable' }],
+      current: { temp: 32, humidity: 60, rain_mm: 0, description: 'Data unavailable' },
+      source: 'mock',
+    }, 'mock');
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // Intelligence API (v2) — Database-backed, ML-powered endpoints
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -547,6 +600,43 @@ export const getHarvestWindowV2 = async (params) => {
     const cached = await readCachedPayload(cacheKey);
     if (cached) return withMeta(cached, 'cache');
     return withMeta(buildHarvestMock(params), 'mock');
+  }
+};
+
+/**
+ * Scan a plant image for disease using the backend HuggingFace proxy.
+ * Sends the base64-encoded image to /api/disease/scan.
+ * @param {string} imageBase64 - Base64 encoded image string (no data URI prefix)
+ * @returns {Promise<object>} Disease scan result
+ */
+export const scanDisease = async (imageBase64) => {
+  try {
+    const response = await apiClient.post('/api/disease/scan', {
+      image_base64: imageBase64,
+    }, { timeout: 30000 }); // longer timeout for ML inference
+    return response?.data || { success: false, message: 'Empty response from server' };
+  } catch (error) {
+    if (__DEV__) console.warn('Disease scan via backend failed:', error.message);
+    const status = error?.response?.status;
+    if (status === 503) {
+      return {
+        success: false,
+        message: 'Disease detection service is not configured on the server. Please set HF_TOKEN.',
+        error: 'HF_TOKEN_MISSING',
+      };
+    }
+    if (status === 400) {
+      return {
+        success: false,
+        message: 'Invalid image data. Please try taking the photo again.',
+        error: 'INVALID_IMAGE',
+      };
+    }
+    return {
+      success: false,
+      message: 'Server unreachable. Check your internet connection and try again.',
+      error: error.message,
+    };
   }
 };
 

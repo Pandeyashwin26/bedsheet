@@ -30,6 +30,7 @@ from routers.disease import router as disease_router
 from routers.schemes import router as schemes_router
 from routers.intelligence import router as intelligence_router
 from routers.auth import router as auth_router
+from routers.aria import router as aria_router
 
 # Database & ETL
 from db.session import init_db
@@ -152,6 +153,7 @@ def create_app() -> FastAPI:
     api_prefix = "/api/v1" if settings.is_production else ""
 
     app.include_router(auth_router, prefix=api_prefix)
+    app.include_router(aria_router, prefix=api_prefix)
     app.include_router(predict_router, prefix=api_prefix)
     app.include_router(intelligence_router, prefix=api_prefix)
     app.include_router(weather_router, prefix=api_prefix)

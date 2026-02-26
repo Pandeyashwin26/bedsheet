@@ -4,15 +4,24 @@ from typing import Any, Dict
 
 from fastapi import APIRouter
 
-from services.weather_service import fetch_weather_features
+from services.weather_service import fetch_weather_features, fetch_current_weather
 
 router = APIRouter(prefix="/api/weather", tags=["weather"])
+
+
+@router.get("/current/{district}")
+def get_current_weather(district: str) -> Dict[str, Any]:
+    """Return real-time current weather for a district (Open-Meteo, no API key)."""
+    return fetch_current_weather(district=district)
 
 
 @router.get("/{district}")
 def get_weather(district: str, state: str = "Maharashtra") -> Dict[str, Any]:
     """Return weather features for a district. Always succeeds (has built-in fallback)."""
     features = fetch_weather_features(district=district, state=state)
+
+    # Also fetch current conditions
+    current = fetch_current_weather(district=district)
 
     # Build frontend-friendly alert
     temp = float(features.get("avg_temp_next7days", 32))
@@ -63,4 +72,12 @@ def get_weather(district: str, state: str = "Maharashtra") -> Dict[str, Any]:
         "alerts": alerts,
         "source": features.get("source", "fallback"),
         "confidence": features.get("confidence", 0.58),
+        "current": {
+            "temp": current.get("temp"),
+            "humidity": current.get("humidity"),
+            "rain_mm": current.get("rain_mm", 0),
+            "windspeed": current.get("windspeed", 0),
+            "description": current.get("description", ""),
+            "is_day": current.get("is_day", True),
+        },
     }

@@ -1,6 +1,5 @@
 /**
- * AGRI-मित्र Login Screen
- * ═══════════════════════════════════════════════════════════════════════════════
+ * AGRI-मित्र Login Screen — Material Design 3
  */
 
 import React, { useState, useRef } from 'react';
@@ -19,16 +18,9 @@ import {
   StatusBar,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS } from '../theme/colors';
+import { COLORS, ELEVATION, RADIUS, SPACING, TYPOGRAPHY } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-
-// ── Quick login accounts ─────────────────────────────────────────────────────
-const QUICK_LOGINS = [
-  { name: 'Prem',   phone: '9876543001', password: 'prem123456', icon: 'account', color: '#E67E22' },
-  { name: 'Bhumi',  phone: '9876543002', password: 'bhumi123456', icon: 'account-heart', color: '#2ECC71' },
-  { name: 'Ashwin', phone: '9876543003', password: 'ashwin123456', icon: 'account-star', color: '#3498DB' },
-];
 
 export default function LoginScreen({ navigation }) {
   const { login } = useAuth();
@@ -38,7 +30,6 @@ export default function LoginScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [quickLoading, setQuickLoading] = useState(null); // index of loading quick login
   const [errors, setErrors] = useState({});
 
   const passwordRef = useRef(null);
@@ -58,7 +49,6 @@ export default function LoginScreen({ navigation }) {
     try {
       await login(phone.trim(), password);
     } catch (err) {
-      console.log('[LoginScreen] login error:', err.message, err.code);
       let msg = err?.response?.data?.detail || '';
       if (!msg) {
         if (err.code === 'ECONNABORTED') msg = 'Server timeout — is backend running?';
@@ -71,36 +61,17 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
-  const handleQuickLogin = async (idx) => {
-    const account = QUICK_LOGINS[idx];
-    setQuickLoading(idx);
-    try {
-      await login(account.phone, account.password);
-    } catch (err) {
-      console.log('[LoginScreen] quick login error:', err.message, err.code);
-      let msg = err?.response?.data?.detail || '';
-      if (!msg) {
-        if (err.code === 'ECONNABORTED') msg = 'Server timeout — is backend running?';
-        else if (err.message?.includes('Network Error')) msg = 'Cannot reach server. Check connection.';
-        else msg = t('auth.loginFailed');
-      }
-      Alert.alert(t('common.error'), `${account.name}: ${msg}`);
-    } finally {
-      setQuickLoading(null);
-    }
-  };
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="#F5F0E8" />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        {/* ── Logo Header ───────────────────────────────────────────────── */}
+        {/* ── Logo Header ───────────────────────────────────────────── */}
         <View style={styles.header}>
           <Image
             source={require('../../assets/logo (2).jpeg')}
@@ -110,18 +81,19 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.tagline}>{t('auth.tagline')}</Text>
         </View>
 
-        {/* ── Form ──────────────────────────────────────────────────────── */}
+        {/* ── Form Card ─────────────────────────────────────────────── */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{t('auth.loginTitle')}</Text>
+          <Text style={styles.cardSubtitle}>{t('auth.loginSubtitle')}</Text>
 
           {/* Phone */}
           <Text style={styles.label}>{t('auth.phone')}</Text>
           <View style={[styles.inputRow, errors.phone && styles.inputError]}>
-            <MaterialCommunityIcons name="phone" size={20} color={COLORS.primary} />
+            <MaterialCommunityIcons name="phone-outline" size={20} color={COLORS.primary} />
             <TextInput
               style={styles.input}
               placeholder="9876543210"
-              placeholderTextColor="#aaa"
+              placeholderTextColor={COLORS.onSurfaceVariant}
               keyboardType="phone-pad"
               maxLength={15}
               value={phone}
@@ -135,23 +107,23 @@ export default function LoginScreen({ navigation }) {
           {/* Password */}
           <Text style={styles.label}>{t('auth.password')}</Text>
           <View style={[styles.inputRow, errors.password && styles.inputError]}>
-            <MaterialCommunityIcons name="lock" size={20} color={COLORS.primary} />
+            <MaterialCommunityIcons name="lock-outline" size={20} color={COLORS.primary} />
             <TextInput
               ref={passwordRef}
               style={styles.input}
               placeholder="••••••"
-              placeholderTextColor="#aaa"
+              placeholderTextColor={COLORS.onSurfaceVariant}
               secureTextEntry={!showPassword}
               value={password}
               onChangeText={(v) => { setPassword(v); setErrors(prev => ({ ...prev, password: null })); }}
               returnKeyType="done"
               onSubmitEditing={handleLogin}
             />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
               <MaterialCommunityIcons
-                name={showPassword ? 'eye-off' : 'eye'}
+                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                 size={22}
-                color="#999"
+                color={COLORS.onSurfaceVariant}
               />
             </TouchableOpacity>
           </View>
@@ -165,43 +137,11 @@ export default function LoginScreen({ navigation }) {
             activeOpacity={0.8}
           >
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={COLORS.onPrimary} />
             ) : (
               <Text style={styles.btnText}>{t('auth.loginBtn')}</Text>
             )}
           </TouchableOpacity>
-
-          {/* ── Quick Login Section ──────────────────────────────────────── */}
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>Quick Login</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <View style={styles.quickLoginRow}>
-            {QUICK_LOGINS.map((account, idx) => (
-              <TouchableOpacity
-                key={account.name}
-                style={[styles.quickLoginBtn, { borderColor: account.color }]}
-                onPress={() => handleQuickLogin(idx)}
-                disabled={quickLoading !== null}
-                activeOpacity={0.7}
-              >
-                {quickLoading === idx ? (
-                  <ActivityIndicator size="small" color={account.color} />
-                ) : (
-                  <>
-                    <View style={[styles.quickAvatar, { backgroundColor: account.color }]}>
-                      <MaterialCommunityIcons name={account.icon} size={24} color="#fff" />
-                    </View>
-                    <Text style={[styles.quickLoginName, { color: account.color }]}>
-                      {account.name}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
 
           {/* Divider */}
           <View style={styles.divider}>
@@ -226,7 +166,7 @@ export default function LoginScreen({ navigation }) {
             style={styles.guestBtn}
             onPress={() => navigation.replace('MainTabs')}
           >
-            <MaterialCommunityIcons name="account-off" size={18} color="#888" />
+            <MaterialCommunityIcons name="account-off-outline" size={18} color={COLORS.onSurfaceVariant} />
             <Text style={styles.guestText}>{t('auth.guestMode')}</Text>
           </TouchableOpacity>
         </View>
@@ -236,71 +176,114 @@ export default function LoginScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F0E8' },
+  container: { flex: 1, backgroundColor: COLORS.background },
   scroll: { flexGrow: 1 },
 
-  /* ── Logo Header ────────────────────────────────────────────────────── */
   header: { alignItems: 'center', paddingTop: 40, paddingBottom: 10 },
-  logo: {
-    width: 220, height: 180,
+  logo: { width: 200, height: 160 },
+  tagline: {
+    ...TYPOGRAPHY.bodyMedium,
+    color: COLORS.onSurfaceVariant,
+    marginTop: SPACING.xs,
+    fontStyle: 'italic',
   },
-  tagline: { fontSize: 14, color: '#666', marginTop: 4, fontStyle: 'italic' },
 
-  /* ── Card ────────────────────────────────────────────────────────────── */
   card: {
-    backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    paddingHorizontal: 24, paddingTop: 28, paddingBottom: 20,
-    flex: 1, minHeight: 400,
-    shadowColor: '#000', shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.08, shadowRadius: 8, elevation: 6,
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.xl,
+    paddingBottom: SPACING.lg,
+    flex: 1,
+    minHeight: 400,
+    ...ELEVATION.level2,
   },
-  cardTitle: { fontSize: 22, fontWeight: '700', color: COLORS.text, marginBottom: 16, textAlign: 'center' },
+  cardTitle: {
+    ...TYPOGRAPHY.headlineSmall,
+    color: COLORS.onSurface,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  cardSubtitle: {
+    ...TYPOGRAPHY.bodyMedium,
+    color: COLORS.onSurfaceVariant,
+    textAlign: 'center',
+    marginTop: SPACING.xs,
+    marginBottom: SPACING.md,
+  },
 
-  label: { fontSize: 13, fontWeight: '600', color: '#555', marginBottom: 6, marginTop: 14 },
-  inputRow: {
-    flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1.5, borderColor: '#E0E0E0', borderRadius: 12,
-    paddingHorizontal: 12, height: 50, backgroundColor: '#FAFAFA',
+  label: {
+    ...TYPOGRAPHY.labelMedium,
+    color: COLORS.onSurfaceVariant,
+    marginBottom: SPACING.xs,
+    marginTop: SPACING.md,
   },
-  inputError: { borderColor: COLORS.warning },
-  input: { flex: 1, fontSize: 16, color: COLORS.text, marginLeft: 10 },
-  errorText: { color: COLORS.warning, fontSize: 12, marginTop: 4 },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: COLORS.outline,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.md,
+    height: 52,
+    backgroundColor: COLORS.surfaceVariant,
+  },
+  inputError: { borderColor: COLORS.error },
+  input: {
+    flex: 1,
+    ...TYPOGRAPHY.bodyLarge,
+    color: COLORS.onSurface,
+    marginLeft: SPACING.sm,
+  },
+  errorText: {
+    ...TYPOGRAPHY.labelSmall,
+    color: COLORS.error,
+    marginTop: SPACING.xs,
+  },
 
   btn: {
-    backgroundColor: COLORS.primary, borderRadius: 12, height: 52,
-    justifyContent: 'center', alignItems: 'center', marginTop: 24,
-    elevation: 2,
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.md,
+    height: 52,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: SPACING.lg,
+    ...ELEVATION.level1,
   },
   btnDisabled: { opacity: 0.7 },
-  btnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
-
-  /* ── Quick Login ─────────────────────────────────────────────────────── */
-  quickLoginRow: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    marginBottom: 8, gap: 10,
+  btnText: {
+    ...TYPOGRAPHY.labelLarge,
+    color: COLORS.onPrimary,
+    fontWeight: '700',
   },
-  quickLoginBtn: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 14, borderRadius: 16,
-    borderWidth: 2, backgroundColor: '#FAFAFA',
-  },
-  quickAvatar: {
-    width: 44, height: 44, borderRadius: 22,
-    justifyContent: 'center', alignItems: 'center', marginBottom: 6,
-  },
-  quickLoginName: { fontSize: 14, fontWeight: '700' },
 
-  divider: { flexDirection: 'row', alignItems: 'center', marginVertical: 16 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: '#E0E0E0' },
-  dividerText: { marginHorizontal: 12, color: '#999', fontSize: 13 },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: SPACING.lg,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: COLORS.outlineVariant },
+  dividerText: {
+    ...TYPOGRAPHY.labelMedium,
+    marginHorizontal: SPACING.md,
+    color: COLORS.onSurfaceVariant,
+  },
 
-  secondaryBtn: { alignItems: 'center', paddingVertical: 10 },
-  secondaryBtnText: { fontSize: 14, color: '#666' },
+  secondaryBtn: { alignItems: 'center', paddingVertical: SPACING.sm },
+  secondaryBtnText: { ...TYPOGRAPHY.bodyMedium, color: COLORS.onSurfaceVariant },
   linkText: { color: COLORS.primary, fontWeight: '700' },
 
   guestBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    marginTop: 12, paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: SPACING.md,
+    paddingVertical: SPACING.sm,
   },
-  guestText: { color: '#888', fontSize: 13, marginLeft: 6 },
+  guestText: {
+    ...TYPOGRAPHY.labelMedium,
+    color: COLORS.onSurfaceVariant,
+    marginLeft: SPACING.xs,
+  },
 });

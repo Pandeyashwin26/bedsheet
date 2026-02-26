@@ -8,11 +8,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Appbar, Card, Text } from 'react-native-paper';
+import { Appbar, Text } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import { COLORS } from '../theme/colors';
+import { COLORS, ELEVATION, RADIUS, SPACING, TYPOGRAPHY } from '../theme/colors';
 import { useLanguage } from '../context/LanguageContext';
 import {
   BEST_SELLING_PERIOD,
@@ -26,7 +27,7 @@ import { API_BASE_URL } from '../services/apiService';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CACHE_KEY = 'agrimitra_market_cache';
-const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+const CACHE_TTL = 30 * 60 * 1000;
 
 export default function MarketScreen() {
   const { t } = useLanguage();
@@ -36,7 +37,7 @@ export default function MarketScreen() {
   const [prices, setPrices] = useState([]);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [dataSource, setDataSource] = useState('local'); // 'api' | 'cache' | 'local'
+  const [dataSource, setDataSource] = useState('local');
 
   const fetchFromApi = useCallback(async (district) => {
     try {
@@ -44,84 +45,41 @@ export default function MarketScreen() {
         params: { district, state: 'Maharashtra' },
         timeout: 10000,
       });
-
       if (response.data?.prices) {
-        return {
-          data: response.data.prices,
-          neighborInfo: response.data.neighbor_intelligence,
-          source: response.data.source || 'api',
-        };
+        return { data: response.data.prices, source: response.data.source || 'api' };
       }
       return null;
-    } catch (error) {
-      if (__DEV__) {
-        console.warn('Market API fetch failed:', error.message);
-      }
-      return null;
-    }
+    } catch { return null; }
   }, []);
 
   const loadPrices = useCallback(async () => {
-    // Check cache first
     const cacheRaw = await AsyncStorage.getItem(CACHE_KEY);
     if (cacheRaw) {
       const cached = JSON.parse(cacheRaw);
-      if (
-        cached.district === selectedDistrict &&
-        Date.now() - cached.timestamp < CACHE_TTL
-      ) {
-        setPrices(cached.data);
-        setLastUpdated(new Date(cached.timestamp));
-        setDataSource(cached.source || 'cache');
+      if (cached.district === selectedDistrict && Date.now() - cached.timestamp < CACHE_TTL) {
+        setPrices(cached.data); setLastUpdated(new Date(cached.timestamp)); setDataSource(cached.source || 'cache');
         return;
       }
     }
-
-    // Try API first
     const apiResult = await fetchFromApi(selectedDistrict);
     if (apiResult) {
-      setPrices(apiResult.data);
-      setLastUpdated(new Date());
-      setDataSource('api');
-      await AsyncStorage.setItem(
-        CACHE_KEY,
-        JSON.stringify({
-          district: selectedDistrict,
-          data: apiResult.data,
-          timestamp: Date.now(),
-          source: 'api',
-        })
-      );
+      setPrices(apiResult.data); setLastUpdated(new Date()); setDataSource('api');
+      await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ district: selectedDistrict, data: apiResult.data, timestamp: Date.now(), source: 'api' }));
       return;
     }
-
-    // Fallback to local data
     const data = getAllPricesForDistrict(selectedDistrict);
-    setPrices(data);
-    setLastUpdated(new Date());
-    setDataSource('local');
-    await AsyncStorage.setItem(
-      CACHE_KEY,
-      JSON.stringify({
-        district: selectedDistrict,
-        data,
-        timestamp: Date.now(),
-        source: 'local',
-      })
-    );
+    setPrices(data); setLastUpdated(new Date()); setDataSource('local');
+    await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ district: selectedDistrict, data, timestamp: Date.now(), source: 'local' }));
   }, [selectedDistrict, fetchFromApi]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    // Clear cache to force fresh fetch
     await AsyncStorage.removeItem(CACHE_KEY);
     await loadPrices();
     setIsRefreshing(false);
   }, [loadPrices]);
 
-  useEffect(() => {
-    loadPrices();
-  }, [loadPrices]);
+  useEffect(() => { loadPrices(); }, [loadPrices]);
 
   const filteredPrices = useMemo(() => {
     if (!selectedCrop) return prices;
@@ -133,43 +91,36 @@ export default function MarketScreen() {
     return getNeighborIntelligence(selectedDistrict, crop);
   }, [selectedDistrict, selectedCrop, expandedCrop]);
 
-  const toggleExpand = (crop) => {
-    setExpandedCrop(expandedCrop === crop ? null : crop);
-  };
+  const toggleExpand = (crop) => setExpandedCrop(expandedCrop === crop ? null : crop);
 
   const renderPriceCard = ({ item }) => {
     const isExpanded = expandedCrop === item.crop;
-    const changeColor = item.change >= 0 ? '#2E7D32' : '#C62828';
-    const changeArrow = item.change >= 0 ? '▲' : '▼';
+    const changeColor = item.change >= 0 ? COLORS.success : COLORS.error;
+    const changeIcon = item.change >= 0 ? 'trending-up' : 'trending-down';
     const bestPeriod = BEST_SELLING_PERIOD[item.crop];
-
-    const chartLabels = item.history
-      ? item.history
-        .filter((_, i) => i % 7 === 0 || i === item.history.length - 1)
-        .map((h) => h.dateLabel)
-      : [];
+    const chartLabels = item.history ? item.history.filter((_, i) => i % 7 === 0 || i === item.history.length - 1).map((h) => h.dateLabel) : [];
     const chartData = item.history ? item.history.map((h) => h.price) : [];
 
     return (
-      <TouchableOpacity
-        activeOpacity={0.85}
-        onPress={() => toggleExpand(item.crop)}
-        style={styles.priceCard}
-      >
+      <TouchableOpacity activeOpacity={0.75} onPress={() => toggleExpand(item.crop)} style={styles.priceCard}>
         <View style={styles.priceCardRow}>
           <View style={styles.cropLabelCol}>
-            <Text style={styles.cropEmoji}>{item.emoji}</Text>
-            <Text style={styles.cropName}>{item.crop}</Text>
+            <View style={styles.cropIconWrap}>
+              <Text style={styles.cropEmoji}>{item.emoji}</Text>
+            </View>
+            <View>
+              <Text style={styles.cropName}>{item.crop}</Text>
+              <Text style={styles.mandiName}>{item.mandi}</Text>
+            </View>
           </View>
           <View style={styles.priceCol}>
-            <Text style={styles.priceValue}>₹{item.price}/kg</Text>
-            <Text style={[styles.priceChange, { color: changeColor }]}>
-              {changeArrow} {item.change >= 0 ? '+' : ''}₹{item.change} {t('common.today')}
-            </Text>
-          </View>
-          <View style={styles.mandiCol}>
-            <Text style={styles.mandiName}>{item.mandi}</Text>
-            <Text style={styles.mandiUpdate}>{t('market.todayUpdate')}</Text>
+            <Text style={styles.priceValue}>₹{item.price}</Text>
+            <View style={[styles.changePill, { backgroundColor: changeColor + '18' }]}>
+              <MaterialCommunityIcons name={changeIcon} size={14} color={changeColor} />
+              <Text style={[styles.priceChange, { color: changeColor }]}>
+                ₹{Math.abs(item.change)}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -177,166 +128,97 @@ export default function MarketScreen() {
           <View style={styles.chartSection}>
             <Text style={styles.chartTitle}>{t('market.chart30Day')}</Text>
             <LineChart
-              data={{
-                labels: chartLabels,
-                datasets: [{ data: chartData, strokeWidth: 2 }],
-              }}
-              width={SCREEN_WIDTH - 64}
-              height={200}
+              data={{ labels: chartLabels, datasets: [{ data: chartData, strokeWidth: 2 }] }}
+              width={SCREEN_WIDTH - 64} height={180}
               chartConfig={{
-                backgroundColor: '#ffffff',
-                backgroundGradientFrom: '#ffffff',
-                backgroundGradientTo: '#ffffff',
+                backgroundColor: COLORS.surface, backgroundGradientFrom: COLORS.surface, backgroundGradientTo: COLORS.surface,
                 decimalCount: 1,
-                color: (opacity = 1) => `rgba(46, 125, 50, ${opacity})`,
-                labelColor: (opacity = 1) => `rgba(80, 80, 80, ${opacity})`,
-                style: { borderRadius: 12 },
-                fillShadowGradientFrom: '#52B788',
-                fillShadowGradientTo: '#ffffff',
-                fillShadowGradientFromOpacity: 0.3,
-                fillShadowGradientToOpacity: 0,
-                propsForDots: {
-                  r: '3',
-                  strokeWidth: '1',
-                  stroke: '#2E7D32',
-                },
+                color: (opacity = 1) => `rgba(27, 94, 32, ${opacity})`,
+                labelColor: () => COLORS.onSurfaceVariant,
+                style: { borderRadius: RADIUS.md },
+                fillShadowGradientFrom: COLORS.primary, fillShadowGradientTo: COLORS.surface,
+                fillShadowGradientFromOpacity: 0.2, fillShadowGradientToOpacity: 0,
+                propsForDots: { r: '3', strokeWidth: '1', stroke: COLORS.primary },
               }}
-              bezier
-              style={styles.chart}
-              withVerticalLines={false}
+              bezier style={styles.chart} withVerticalLines={false}
             />
-            {/* Best selling period band caption */}
-            <View style={styles.bestPeriodRow}>
-              <View style={styles.bestPeriodBand} />
-              <Text style={styles.bestPeriodText}>{bestPeriod?.caption}</Text>
-            </View>
+            {bestPeriod?.caption ? (
+              <View style={styles.bestPeriodRow}>
+                <View style={styles.bestPeriodBand} />
+                <Text style={styles.bestPeriodText}>{bestPeriod.caption}</Text>
+              </View>
+            ) : null}
           </View>
         ) : null}
       </TouchableOpacity>
     );
   };
 
+  const sourceLabel = dataSource === 'api' ? t('common.live') : dataSource === 'cache' ? t('common.cached') : t('common.offline');
+  const sourceColor = dataSource === 'api' ? COLORS.success : dataSource === 'cache' ? COLORS.warning : COLORS.onSurfaceVariant;
+
   return (
     <View style={styles.screen}>
       <Appbar.Header style={styles.header}>
-        <Appbar.Content
-          title={t('market.header')}
-          titleStyle={styles.headerTitle}
-        />
+        <Appbar.Content title={t('market.header')} titleStyle={styles.headerTitle} />
       </Appbar.Header>
 
       {lastUpdated ? (
         <View style={styles.updateRow}>
           <Text style={styles.updateText}>
             {t('common.lastUpdated')}: {lastUpdated.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-            {dataSource === 'api' ? ` • ${t('common.live')}` : dataSource === 'cache' ? ` • ${t('common.cached')}` : ` • ${t('common.offline')}`}
           </Text>
+          <View style={[styles.sourceBadge, { backgroundColor: sourceColor + '18' }]}>
+            <View style={[styles.sourceDot, { backgroundColor: sourceColor }]} />
+            <Text style={[styles.sourceText, { color: sourceColor }]}>{sourceLabel}</Text>
+          </View>
         </View>
       ) : null}
 
       {/* District filter */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterScroll}
-        contentContainerStyle={styles.filterContent}
-      >
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
         {DISTRICTS.map((d) => (
-          <TouchableOpacity
-            key={d}
-            style={[
-              styles.filterPill,
-              selectedDistrict === d && styles.filterPillActive,
-            ]}
-            onPress={() => setSelectedDistrict(d)}
-          >
-            <Text
-              style={[
-                styles.filterPillText,
-                selectedDistrict === d && styles.filterPillTextActive,
-              ]}
-            >
-              {d}
-            </Text>
+          <TouchableOpacity key={d} style={[styles.filterPill, selectedDistrict === d && styles.filterPillActive]} onPress={() => setSelectedDistrict(d)}>
+            <Text style={[styles.filterPillText, selectedDistrict === d && styles.filterPillTextActive]}>{d}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
       {/* Crop filter */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterScroll}
-        contentContainerStyle={styles.filterContent}
-      >
-        <TouchableOpacity
-          style={[styles.filterPill, !selectedCrop && styles.filterPillActive]}
-          onPress={() => setSelectedCrop(null)}
-        >
-          <Text style={[styles.filterPillText, !selectedCrop && styles.filterPillTextActive]}>
-            {t('common.all')}
-          </Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
+        <TouchableOpacity style={[styles.filterPill, !selectedCrop && styles.filterPillActive]} onPress={() => setSelectedCrop(null)}>
+          <Text style={[styles.filterPillText, !selectedCrop && styles.filterPillTextActive]}>{t('common.all')}</Text>
         </TouchableOpacity>
         {CROPS.map((c) => (
-          <TouchableOpacity
-            key={c}
-            style={[
-              styles.filterPill,
-              selectedCrop === c && styles.filterPillActive,
-            ]}
-            onPress={() => setSelectedCrop(c)}
-          >
-            <Text
-              style={[
-                styles.filterPillText,
-                selectedCrop === c && styles.filterPillTextActive,
-              ]}
-            >
-              {CROP_EMOJIS[c]} {c}
-            </Text>
+          <TouchableOpacity key={c} style={[styles.filterPill, selectedCrop === c && styles.filterPillActive]} onPress={() => setSelectedCrop(c)}>
+            <Text style={[styles.filterPillText, selectedCrop === c && styles.filterPillTextActive]}>{c}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
-      {/* Price cards */}
       <FlatList
         data={filteredPrices}
         keyExtractor={(item) => item.crop}
         renderItem={renderPriceCard}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            colors={[COLORS.primary]}
-            tintColor={COLORS.primary}
-          />
-        }
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={[COLORS.primary]} />}
         ListFooterComponent={
-          <Card style={styles.neighborCard}>
-            <Card.Content style={styles.neighborContent}>
-              <Text style={styles.neighborTitle}>{t('market.neighborTitle')}</Text>
+          neighborInfo ? (
+            <View style={styles.neighborCard}>
+              <View style={styles.neighborHeader}>
+                <MaterialCommunityIcons name="account-group-outline" size={22} color={COLORS.primary} />
+                <Text style={styles.neighborTitle}>{t('market.neighborTitle')}</Text>
+              </View>
               <Text style={styles.neighborCount}>
-                इस हफ्ते {neighborInfo.district} में{' '}
-                <Text style={{ fontWeight: '800', color: neighborInfo.color }}>
-                  {neighborInfo.farmerCount} किसान
-                </Text>{' '}
-                {neighborInfo.crop} बेच रहे हैं
+                {t('market.neighborMsg', { count: neighborInfo.farmerCount, district: neighborInfo.district, crop: neighborInfo.crop })}
               </Text>
-              <View
-                style={[
-                  styles.neighborAlert,
-                  { borderColor: neighborInfo.color, backgroundColor: neighborInfo.color + '12' },
-                ]}
-              >
-                <Text style={[styles.neighborMessage, { color: neighborInfo.color }]}>
-                  {neighborInfo.message}
-                </Text>
+              <View style={[styles.neighborAlert, { borderColor: neighborInfo.color + '40', backgroundColor: neighborInfo.color + '0A' }]}>
+                <Text style={[styles.neighborMessage, { color: neighborInfo.color }]}>{neighborInfo.message}</Text>
                 <Text style={styles.neighborSuggestion}>{neighborInfo.suggestion}</Text>
               </View>
-            </Card.Content>
-          </Card>
+            </View>
+          ) : null
         }
       />
     </View>
@@ -345,118 +227,47 @@ export default function MarketScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.background },
-  header: {
-    backgroundColor: COLORS.card,
-    elevation: 0,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E6E9EC',
-  },
-  headerTitle: { fontWeight: '700', color: COLORS.text, fontSize: 20 },
-  updateRow: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    backgroundColor: '#F0F4F8',
-  },
-  updateText: { fontSize: 12, color: '#6B7B8A' },
+  header: { backgroundColor: COLORS.surface, elevation: 0, borderBottomWidth: 1, borderBottomColor: COLORS.outlineVariant },
+  headerTitle: { ...TYPOGRAPHY.titleLarge, color: COLORS.onSurface, fontWeight: '700' },
+
+  updateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.md, paddingVertical: SPACING.xs, backgroundColor: COLORS.surfaceVariant },
+  updateText: { ...TYPOGRAPHY.labelSmall, color: COLORS.onSurfaceVariant },
+  sourceBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.sm, paddingVertical: 2, borderRadius: RADIUS.full, gap: 4 },
+  sourceDot: { width: 6, height: 6, borderRadius: 3 },
+  sourceText: { ...TYPOGRAPHY.labelSmall, fontWeight: '700' },
 
   filterScroll: { flexGrow: 0 },
-  filterContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    columnGap: 8,
-  },
-  filterPill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#EDF1F5',
-  },
+  filterContent: { paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, columnGap: SPACING.sm },
+  filterPill: { paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, borderRadius: RADIUS.full, backgroundColor: COLORS.surfaceVariant },
   filterPillActive: { backgroundColor: COLORS.primary },
-  filterPillText: { fontSize: 14, fontWeight: '600', color: '#4F5B62' },
-  filterPillTextActive: { color: '#FFFFFF' },
+  filterPillText: { ...TYPOGRAPHY.labelMedium, color: COLORS.onSurfaceVariant },
+  filterPillTextActive: { color: COLORS.onPrimary },
 
-  listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 24,
-    rowGap: 10,
-  },
-  priceCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 14,
-    padding: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  priceCardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  cropLabelCol: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    columnGap: 8,
-    flex: 1,
-  },
-  cropEmoji: { fontSize: 28 },
-  cropName: { fontSize: 16, fontWeight: '700', color: COLORS.text },
-  priceCol: { alignItems: 'center', flex: 1 },
-  priceValue: { fontSize: 20, fontWeight: '800', color: COLORS.text },
-  priceChange: { fontSize: 13, fontWeight: '700', marginTop: 2 },
-  mandiCol: { alignItems: 'flex-end', flex: 1 },
-  mandiName: { fontSize: 13, fontWeight: '600', color: '#4F5B62' },
-  mandiUpdate: { fontSize: 11, color: '#8A9BA8', marginTop: 2 },
+  listContent: { paddingHorizontal: SPACING.md, paddingTop: SPACING.xs, paddingBottom: SPACING.xl, rowGap: SPACING.sm },
+  priceCard: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: SPACING.md, ...ELEVATION.level1 },
+  priceCardRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cropLabelCol: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, flex: 1 },
+  cropIconWrap: { width: 44, height: 44, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceVariant, justifyContent: 'center', alignItems: 'center' },
+  cropEmoji: { fontSize: 22 },
+  cropName: { ...TYPOGRAPHY.titleSmall, color: COLORS.onSurface, fontWeight: '700' },
+  mandiName: { ...TYPOGRAPHY.labelSmall, color: COLORS.onSurfaceVariant, marginTop: 1 },
+  priceCol: { alignItems: 'flex-end' },
+  priceValue: { ...TYPOGRAPHY.titleMedium, color: COLORS.onSurface, fontWeight: '800' },
+  changePill: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: SPACING.sm, paddingVertical: 2, borderRadius: RADIUS.full, marginTop: 2 },
+  priceChange: { ...TYPOGRAPHY.labelSmall, fontWeight: '700' },
 
-  chartSection: {
-    marginTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: '#EDF1F5',
-    paddingTop: 12,
-  },
-  chartTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text, marginBottom: 8 },
-  chart: { borderRadius: 12, alignSelf: 'center' },
-  bestPeriodRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-    columnGap: 8,
-  },
-  bestPeriodBand: {
-    width: 20,
-    height: 10,
-    backgroundColor: '#FFEE5820',
-    borderWidth: 1,
-    borderColor: '#FFD600',
-    borderRadius: 3,
-  },
-  bestPeriodText: {
-    flex: 1,
-    fontSize: 12,
-    color: '#7A6B00',
-    fontWeight: '600',
-  },
+  chartSection: { marginTop: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.outlineVariant, paddingTop: SPACING.sm },
+  chartTitle: { ...TYPOGRAPHY.titleSmall, color: COLORS.onSurface, fontWeight: '700', marginBottom: SPACING.sm },
+  chart: { borderRadius: RADIUS.md, alignSelf: 'center' },
+  bestPeriodRow: { flexDirection: 'row', alignItems: 'center', marginTop: SPACING.sm, columnGap: SPACING.sm },
+  bestPeriodBand: { width: 20, height: 10, backgroundColor: '#FFEE5820', borderWidth: 1, borderColor: '#FFD600', borderRadius: 3 },
+  bestPeriodText: { flex: 1, ...TYPOGRAPHY.labelSmall, color: '#7A6B00', fontWeight: '600' },
 
-  neighborCard: {
-    marginTop: 10,
-    borderRadius: 16,
-    backgroundColor: COLORS.card,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.07,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  neighborContent: { paddingVertical: 16, rowGap: 10 },
-  neighborTitle: { fontSize: 18, fontWeight: '700', color: COLORS.text },
-  neighborCount: { fontSize: 15, color: '#3A4A56', lineHeight: 24 },
-  neighborAlert: {
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-  },
-  neighborMessage: { fontSize: 14, fontWeight: '700', lineHeight: 22 },
-  neighborSuggestion: { fontSize: 13, color: '#4F5B62', marginTop: 4 },
+  neighborCard: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: SPACING.md, marginTop: SPACING.sm, ...ELEVATION.level1 },
+  neighborHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginBottom: SPACING.sm },
+  neighborTitle: { ...TYPOGRAPHY.titleMedium, color: COLORS.onSurface, fontWeight: '700' },
+  neighborCount: { ...TYPOGRAPHY.bodyMedium, color: COLORS.onSurfaceVariant, lineHeight: 22 },
+  neighborAlert: { borderRadius: RADIUS.md, padding: SPACING.md, borderWidth: 1, marginTop: SPACING.sm },
+  neighborMessage: { ...TYPOGRAPHY.bodyMedium, fontWeight: '700', lineHeight: 22 },
+  neighborSuggestion: { ...TYPOGRAPHY.bodySmall, color: COLORS.onSurfaceVariant, marginTop: SPACING.xs },
 });

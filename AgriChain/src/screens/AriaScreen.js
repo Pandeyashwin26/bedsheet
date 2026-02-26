@@ -1,77 +1,780 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import * as Speech from 'expo-speech';
+import {
+  ActivityIndicator,
+  Animated,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../theme/colors';
+import {
+  fetchAriaReply,
+  getAriaFallbackReply,
+  transcribeWithWhisper,
+} from '../services/ariaService';
 
-const PRESERVATION_STEPS = [
-  'Mix calcium chloride at 1% solution (10 g in 1 liter clean water).',
-  'Dip or spray produce lightly, then allow surface drying in shade.',
-  'Move produce to ventilated warehouse crates and avoid direct floor contact.',
-  'Keep handling to minimum and dispatch in the next market cycle.',
+const LANGUAGE_OPTIONS = [
+  { code: 'hi', label: 'हिं', speechCode: 'hi-IN' },
+  { code: 'en', label: 'EN', speechCode: 'en-IN' },
+  { code: 'mr', label: 'मर', speechCode: 'mr-IN' },
 ];
 
-export default function AriaScreen({ route }) {
-  const topic = route?.params?.topic;
-  const isPreservationGuide = topic === 'calcium-chloride-storage';
+const QUICK_REPLY_CHIPS = ['क्यों?', 'और बताओ', 'सरकारी योजना?', 'Expert बुलाओ'];
 
+const createId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const normalizeContext = (rawContext) => ({
+  crop: rawContext?.crop || 'Onion',
+  district: rawContext?.district || 'Nashik',
+  risk_category: rawContext?.risk_category || rawContext?.riskCategory || 'Medium',
+  last_recommendation:
+    rawContext?.last_recommendation ||
+    rawContext?.lastRecommendation ||
+    'Review latest recommendation',
+});
+
+const getLanguageByCode = (code) =>
+  LANGUAGE_OPTIONS.find((item) => item.code === code) || LANGUAGE_OPTIONS[1];
+
+const createSuggestedQuestions = (context) => [
+  `मेरे ${context.crop} कब बेचूं?`,
+  `आज ${context.district} मंडी का भाव?`,
+  'मेरी फसल खराब हो रही है क्या करूं?',
+  'कौन सी खाद डालूं?',
+];
+
+function MessageBubble({ message, onReplay, onQuickReply }) {
+  const isUser = message.role === 'user';
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>ARIA</Text>
-      {isPreservationGuide ? (
-        <View style={styles.guideCard}>
-          <Text style={styles.guideTitle}>
-            Calcium chloride + warehouse storage guide
+    <View style={[styles.messageRow, isUser ? styles.userRow : styles.assistantRow]}>
+      <View
+        style={[
+          styles.messageBubble,
+          isUser ? styles.userBubble : styles.assistantBubble,
+        ]}
+      >
+        <View style={styles.assistantMessageHead}>
+          <Text style={[styles.messageText, isUser ? styles.userText : styles.assistantText]}>
+            {message.text}
           </Text>
-          {PRESERVATION_STEPS.map((step) => (
-            <Text key={step} style={styles.stepText}>
-              {`\u2022 ${step}`}
-            </Text>
+          {!isUser ? (
+            <TouchableOpacity
+              onPress={() => onReplay(message)}
+              style={styles.replayButton}
+              hitSlop={8}
+            >
+              <MaterialCommunityIcons
+                name="volume-high"
+                size={18}
+                color={COLORS.primary}
+              />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      </View>
+
+      {!isUser ? (
+        <View style={styles.quickRepliesRow}>
+          {QUICK_REPLY_CHIPS.map((chip) => (
+            <TouchableOpacity
+              key={`${message.id}-${chip}`}
+              style={styles.quickReplyChip}
+              onPress={() => onQuickReply(chip)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.quickReplyText}>{chip}</Text>
+            </TouchableOpacity>
           ))}
         </View>
-      ) : (
-        <Text style={styles.subtitle}>Voice assistant tools will appear here.</Text>
-      )}
+      ) : null}
     </View>
   );
 }
 
+export default function ARIAScreen({ route }) {
+  const listRef = useRef(null);
+  const recordingRef = useRef(null);
+  const messagesRef = useRef([]);
+  const topicSeededRef = useRef(false);
+  const audioApiRef = useRef(null);
+
+  const [messages, setMessages] = useState([]);
+  const [inputText, setInputText] = useState('');
+  const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGE_OPTIONS[0]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speakingMessageId, setSpeakingMessageId] = useState(null);
+  const [context, setContext] = useState(normalizeContext(route?.params?.context));
+
+  const pulseScale = useRef(new Animated.Value(1)).current;
+  const waveBarOne = useRef(new Animated.Value(8)).current;
+  const waveBarTwo = useRef(new Animated.Value(12)).current;
+  const waveBarThree = useRef(new Animated.Value(6)).current;
+
+  useEffect(() => {
+    messagesRef.current = messages;
+    requestAnimationFrame(() => {
+      listRef.current?.scrollToEnd({ animated: true });
+    });
+  }, [messages]);
+
+  useEffect(() => {
+    if (route?.params?.context) {
+      setContext(normalizeContext(route.params.context));
+    }
+  }, [route?.params?.context]);
+
+  useEffect(() => {
+    if (route?.params?.topic !== 'calcium-chloride-storage') {
+      return;
+    }
+    if (topicSeededRef.current) {
+      return;
+    }
+    topicSeededRef.current = true;
+    const languageCode = selectedLanguage.code;
+    const guideText =
+      languageCode === 'mr'
+        ? 'कॅल्शियम क्लोराइड 1% द्रावण वापरा, मग सावलीत वाळवून हवा खेळती असलेल्या गोदामात ठेवा. उद्या बाजारात विक्रीची तयारी करा. कल पर्यंत थांबा.'
+        : languageCode === 'en'
+          ? 'Use a 1% calcium chloride spray, dry the produce in shade, then keep it in a ventilated warehouse. Prepare dispatch by tomorrow. Wait till tomorrow.'
+          : 'Calcium chloride 1% solution spray karo, phir chhaya mein sukhakar hawa-daar warehouse mein rakho. Kal subah dispatch ki tayari karo. Kal tak ruko.';
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: createId(),
+        role: 'assistant',
+        text: guideText,
+        languageCode,
+      },
+    ]);
+    speakText(guideText, languageCode);
+  }, [route?.params?.topic, selectedLanguage.code]);
+
+  useEffect(() => {
+    if (!isRecording) {
+      pulseScale.stopAnimation();
+      pulseScale.setValue(1);
+      return undefined;
+    }
+
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseScale, {
+          toValue: 1.35,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseScale, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [isRecording, pulseScale]);
+
+  useEffect(() => {
+    const bars = [waveBarOne, waveBarTwo, waveBarThree];
+    if (!isSpeaking) {
+      bars.forEach((bar, index) => bar.setValue(index === 1 ? 12 : 8));
+      return undefined;
+    }
+
+    const loops = bars.map((bar, index) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(bar, {
+            toValue: 24 - index * 3,
+            duration: 240 + index * 80,
+            useNativeDriver: false,
+          }),
+          Animated.timing(bar, {
+            toValue: 6 + index * 2,
+            duration: 240 + index * 80,
+            useNativeDriver: false,
+          }),
+        ])
+      )
+    );
+    loops.forEach((loop) => loop.start());
+
+    return () => {
+      loops.forEach((loop) => loop.stop());
+    };
+  }, [isSpeaking, waveBarOne, waveBarTwo, waveBarThree]);
+
+  useEffect(() => {
+    return () => {
+      Speech.stop();
+      if (recordingRef.current) {
+        recordingRef.current.stopAndUnloadAsync().catch(() => {});
+      }
+    };
+  }, []);
+
+  const suggestedQuestions = useMemo(() => createSuggestedQuestions(context), [context]);
+
+  const ensureAudioApi = async () => {
+    if (audioApiRef.current) {
+      return audioApiRef.current;
+    }
+    try {
+      const module = await import('expo-av');
+      audioApiRef.current = module.Audio;
+      return audioApiRef.current;
+    } catch {
+      return null;
+    }
+  };
+
+  const stopSpeech = () => {
+    Speech.stop();
+    setIsSpeaking(false);
+    setSpeakingMessageId(null);
+  };
+
+  const speakText = (text, languageCode, messageId = null) => {
+    const language = getLanguageByCode(languageCode);
+    stopSpeech();
+    setIsSpeaking(true);
+    setSpeakingMessageId(messageId);
+
+    Speech.speak(text, {
+      language: language.speechCode,
+      rate: 0.95,
+      pitch: 1.0,
+      onDone: () => {
+        setIsSpeaking(false);
+        setSpeakingMessageId(null);
+      },
+      onStopped: () => {
+        setIsSpeaking(false);
+        setSpeakingMessageId(null);
+      },
+      onError: () => {
+        setIsSpeaking(false);
+        setSpeakingMessageId(null);
+      },
+    });
+  };
+
+  const appendAssistantMessage = (text, languageCode) => {
+    const message = {
+      id: createId(),
+      role: 'assistant',
+      text,
+      languageCode,
+    };
+    setMessages((prev) => [...prev, message]);
+    speakText(text, languageCode, message.id);
+  };
+
+  const sendUserMessage = async (messageText) => {
+    const text = String(messageText || '').trim();
+    if (!text || isSending) {
+      return;
+    }
+
+    const userMessage = {
+      id: createId(),
+      role: 'user',
+      text,
+      languageCode: selectedLanguage.code,
+    };
+
+    const pendingMessages = [...messagesRef.current, userMessage];
+    setMessages(pendingMessages);
+    setInputText('');
+    setIsSending(true);
+
+    try {
+      const reply = await fetchAriaReply({
+        uiMessages: pendingMessages,
+        context,
+        languageCode: selectedLanguage.code,
+      });
+      appendAssistantMessage(reply, selectedLanguage.code);
+    } catch {
+      appendAssistantMessage(
+        getAriaFallbackReply(selectedLanguage.code),
+        selectedLanguage.code
+      );
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const startRecording = async () => {
+    if (isRecording || isTranscribing || isSending) {
+      return;
+    }
+    try {
+      const AudioApi = await ensureAudioApi();
+      if (!AudioApi) {
+        appendAssistantMessage(
+          'Voice input abhi available nahi hai is runtime mein. Type karke pucho. Aaj hi becho.',
+          selectedLanguage.code
+        );
+        return;
+      }
+
+      const permission = await AudioApi.requestPermissionsAsync();
+      if (permission.status !== 'granted') {
+        appendAssistantMessage(
+          'Mic permission chalu karo, tab main awaaz se sun paungi. Aaj hi becho.',
+          selectedLanguage.code
+        );
+        return;
+      }
+
+      await AudioApi.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await AudioApi.Recording.createAsync(
+        AudioApi.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      recordingRef.current = recording;
+      setIsRecording(true);
+    } catch {
+      appendAssistantMessage(
+        'Recording start nahi ho payi. Type karke pucho. Kal tak ruko.',
+        selectedLanguage.code
+      );
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!recordingRef.current || !isRecording) {
+      return;
+    }
+    setIsRecording(false);
+    setIsTranscribing(true);
+
+    try {
+      const AudioApi = await ensureAudioApi();
+      const recording = recordingRef.current;
+      recordingRef.current = null;
+      await recording.stopAndUnloadAsync();
+      if (AudioApi?.setAudioModeAsync) {
+        await AudioApi.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+        });
+      }
+
+      const uri = recording.getURI();
+      if (!uri) {
+        throw new Error('Recording URI missing.');
+      }
+
+      const transcript = await transcribeWithWhisper({
+        audioUri: uri,
+        languageCode: selectedLanguage.code,
+      });
+
+      if (!transcript) {
+        appendAssistantMessage(
+          'Awaaz clear nahi mili. Ek baar phir bolo. Kal tak ruko.',
+          selectedLanguage.code
+        );
+        return;
+      }
+
+      setInputText(transcript);
+      await new Promise((resolve) => setTimeout(resolve, 180));
+      await sendUserMessage(transcript);
+    } catch {
+      appendAssistantMessage(
+        'Voice samajhne mein issue aaya. Type karke pucho. Aaj hi becho.',
+        selectedLanguage.code
+      );
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  const onReplayMessage = (message) => {
+    speakText(message.text, message.languageCode || selectedLanguage.code, message.id);
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      {isSpeaking ? (
+        <Pressable style={styles.speakingOverlay} onPress={stopSpeech}>
+          <View style={styles.waveContainer}>
+            <Animated.View style={[styles.waveBar, { height: waveBarOne }]} />
+            <Animated.View style={[styles.waveBar, { height: waveBarTwo }]} />
+            <Animated.View style={[styles.waveBar, { height: waveBarThree }]} />
+          </View>
+          <Text style={styles.speakingHint}>Tap anywhere to stop voice</Text>
+        </Pressable>
+      ) : null}
+
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.headerTitle}>{'\u{1F33E} ARIA'}</Text>
+          <Text style={styles.headerSubtitle}>{'आपकी खेती सहायक'}</Text>
+        </View>
+        <View style={styles.languagePills}>
+          {LANGUAGE_OPTIONS.map((option) => (
+            <TouchableOpacity
+              key={option.code}
+              style={[
+                styles.languagePill,
+                selectedLanguage.code === option.code
+                  ? styles.languagePillActive
+                  : null,
+              ]}
+              onPress={() => setSelectedLanguage(option)}
+            >
+              <Text
+                style={[
+                  styles.languagePillText,
+                  selectedLanguage.code === option.code
+                    ? styles.languagePillTextActive
+                    : null,
+                ]}
+              >
+                {option.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      <KeyboardAvoidingView
+        style={styles.chatWrapper}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        {messages.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>Start by asking ARIA</Text>
+            {suggestedQuestions.map((question) => (
+              <TouchableOpacity
+                key={question}
+                style={styles.suggestedChip}
+                onPress={() => sendUserMessage(question)}
+              >
+                <Text style={styles.suggestedChipText}>{question}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : (
+          <FlatList
+            ref={listRef}
+            data={messages}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <MessageBubble
+                message={item}
+                onReplay={onReplayMessage}
+                onQuickReply={sendUserMessage}
+              />
+            )}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
+
+        <View style={styles.inputBar}>
+          <TextInput
+            style={styles.input}
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder="Type your farming question..."
+            placeholderTextColor="#7B8A95"
+            multiline
+            onSubmitEditing={() => sendUserMessage(inputText)}
+          />
+
+          <TouchableOpacity
+            style={styles.sendButton}
+            onPress={() => sendUserMessage(inputText)}
+            activeOpacity={0.9}
+          >
+            <MaterialCommunityIcons name="send" size={18} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          <Pressable
+            style={styles.micButtonWrap}
+            onPressIn={startRecording}
+            onPressOut={stopRecording}
+          >
+            {isRecording ? (
+              <Animated.View
+                style={[
+                  styles.recordingPulse,
+                  {
+                    transform: [{ scale: pulseScale }],
+                  },
+                ]}
+              />
+            ) : null}
+            <View style={styles.micButton}>
+              {isTranscribing || isSending ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.micIcon}>{'\u{1F3A4}'}</Text>
+              )}
+            </View>
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#EEF4EF',
+  },
+  speakingOverlay: {
+    position: 'absolute',
+    zIndex: 20,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(12, 32, 24, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    rowGap: 14,
   },
-  title: {
-    color: COLORS.primary,
-    fontSize: 28,
+  waveContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    columnGap: 6,
+    height: 26,
+  },
+  waveBar: {
+    width: 8,
+    borderRadius: 99,
+    backgroundColor: '#1F8F58',
+  },
+  speakingHint: {
+    color: '#FFFFFF',
+    fontSize: 13,
     fontWeight: '700',
-    marginBottom: 10,
   },
-  subtitle: {
-    color: '#4F5B62',
-    fontSize: 16,
-    textAlign: 'center',
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+    backgroundColor: '#1A5A3F',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  guideCard: {
-    marginTop: 8,
-    width: '100%',
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
+  headerTitle: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  headerSubtitle: {
+    color: '#D7F0E3',
+    fontSize: 13,
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  languagePills: {
+    flexDirection: 'row',
+    columnGap: 6,
+  },
+  languagePill: {
     borderWidth: 1,
-    borderColor: '#DEE3E9',
-    padding: 14,
+    borderColor: '#6AA686',
+    borderRadius: 99,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  languagePillActive: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
+  },
+  languagePillText: {
+    color: '#E7F6EE',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  languagePillTextActive: {
+    color: '#1A5A3F',
+  },
+  chatWrapper: {
+    flex: 1,
+  },
+  listContent: {
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 8,
     rowGap: 8,
   },
-  guideTitle: {
-    color: COLORS.text,
-    fontSize: 17,
-    fontWeight: '700',
-    marginBottom: 4,
+  messageRow: {
+    marginBottom: 8,
   },
-  stepText: {
-    color: '#36444E',
+  userRow: {
+    alignItems: 'flex-end',
+  },
+  assistantRow: {
+    alignItems: 'flex-start',
+  },
+  messageBubble: {
+    maxWidth: '86%',
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  userBubble: {
+    backgroundColor: '#2E7D32',
+    borderTopRightRadius: 4,
+  },
+  assistantBubble: {
+    backgroundColor: '#FFFFFF',
+    borderLeftWidth: 4,
+    borderLeftColor: '#2E7D32',
+    borderTopLeftRadius: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  assistantMessageHead: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    columnGap: 8,
+  },
+  messageText: {
+    flex: 1,
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 21,
+  },
+  userText: {
+    color: '#FFFFFF',
+  },
+  assistantText: {
+    color: '#1F2C35',
+  },
+  replayButton: {
+    marginTop: 1,
+    padding: 2,
+  },
+  quickRepliesRow: {
+    marginTop: 6,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: 6,
+    rowGap: 6,
+    maxWidth: '95%',
+  },
+  quickReplyChip: {
+    borderWidth: 1,
+    borderColor: '#CDE4D6',
+    backgroundColor: '#F4FBF6',
+    borderRadius: 99,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  quickReplyText: {
+    color: '#1D5C41',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  emptyState: {
+    paddingHorizontal: 14,
+    paddingTop: 18,
+    rowGap: 10,
+  },
+  emptyTitle: {
+    color: '#325244',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  suggestedChip: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#CDE0D4',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  suggestedChipText: {
+    color: '#2C3E48',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  inputBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    columnGap: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#D7E2DB',
+    backgroundColor: '#FFFFFF',
+  },
+  input: {
+    flex: 1,
+    minHeight: 46,
+    maxHeight: 120,
+    borderWidth: 1,
+    borderColor: '#D2DEE5',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: '#1F2F3A',
+    fontSize: 14,
+    backgroundColor: '#FAFCFD',
+  },
+  sendButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2E7D32',
+  },
+  micButtonWrap: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recordingPulse: {
+    position: 'absolute',
+    width: 48,
+    height: 48,
+    borderRadius: 999,
+    backgroundColor: 'rgba(41, 155, 93, 0.25)',
+  },
+  micButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+  },
+  micIcon: {
+    color: '#FFFFFF',
+    fontSize: 21,
   },
 });

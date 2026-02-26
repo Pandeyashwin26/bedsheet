@@ -10,6 +10,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../theme/colors';
+import WeatherBanner from '../components/WeatherBanner';
 
 const ACTION_CARDS = [
   {
@@ -22,6 +23,7 @@ const ACTION_CARDS = [
     emoji: '\u{1F4B0}',
     title: 'Best Mandi',
     subtitle: 'Where to sell',
+    tab: 'Market',
   },
   {
     emoji: '\u{1F4E6}',
@@ -30,13 +32,45 @@ const ACTION_CARDS = [
     route: 'Spoilage',
   },
   {
+    emoji: '\u{1F52C}',
+    title: 'Disease Scanner',
+    subtitle: 'AI se pehchano',
+    tab: 'Disease',
+  },
+  {
     emoji: '\u{1F3DB}\u{FE0F}',
     title: 'Govt Schemes',
     subtitle: 'Get benefits',
+    route: 'Schemes',
+  },
+  {
+    emoji: '\u{1F514}',
+    title: 'Smart Alerts',
+    subtitle: 'Weather + Prices',
+    route: 'Alerts',
   },
 ];
 
 export default function HomeScreen({ navigation }) {
+  const openAriaAssistant = () => {
+    navigation.navigate('ARIA', {
+      context: {
+        crop: 'Onion',
+        district: 'Nashik',
+        risk_category: 'Medium',
+        last_recommendation: 'Review latest market recommendation',
+      },
+    });
+  };
+
+  const handleCardPress = (card) => {
+    if (card.route) {
+      navigation.navigate(card.route);
+    } else if (card.tab) {
+      navigation.navigate('MainTabs', { screen: card.tab });
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
@@ -49,7 +83,7 @@ export default function HomeScreen({ navigation }) {
       >
         <View style={styles.topBar}>
           <Text style={styles.brand}>{'\u{1F33E} AgriChain'}</Text>
-          <Text style={styles.languageToggle}>{'EN | \u0939\u093f\u0902'}</Text>
+          <Text style={styles.languageToggle}>{`EN | \u0939\u093f\u0902`}</Text>
         </View>
       </LinearGradient>
 
@@ -57,6 +91,13 @@ export default function HomeScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
       >
+        {/* Weather Banner */}
+        <WeatherBanner
+          district="Nashik"
+          cropContext={{ priceSpike: true, district: 'Nashik', spikePercent: 12 }}
+          onPress={() => navigation.navigate('Alerts')}
+        />
+
         <View style={styles.greetingCard}>
           <Text style={styles.greetingTitle}>{'Namaste \u{1F44B}'}</Text>
           <Text style={styles.greetingSubtitle}>
@@ -70,11 +111,7 @@ export default function HomeScreen({ navigation }) {
               key={card.title}
               style={styles.actionCard}
               activeOpacity={0.85}
-              onPress={() => {
-                if (card.route) {
-                  navigation.navigate(card.route);
-                }
-              }}
+              onPress={() => handleCardPress(card)}
             >
               <Text style={styles.cardEmoji}>{card.emoji}</Text>
               <View style={styles.cardTextBlock}>
@@ -85,6 +122,14 @@ export default function HomeScreen({ navigation }) {
           ))}
         </View>
       </ScrollView>
+
+      <TouchableOpacity
+        style={styles.ariaFab}
+        activeOpacity={0.9}
+        onPress={openAriaAssistant}
+      >
+        <Text style={styles.ariaFabText}>{'\u{1F3A4} ARIA'}</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -119,14 +164,14 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 16,
     paddingBottom: 96,
+    rowGap: 16,
   },
   greetingCard: {
     backgroundColor: COLORS.card,
     borderRadius: 16,
     padding: 18,
-    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
@@ -177,5 +222,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#5D6A72',
     lineHeight: 18,
+  },
+  ariaFab: {
+    position: 'absolute',
+    right: 18,
+    bottom: 92,
+    borderRadius: 999,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  ariaFabText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 13,
   },
 });

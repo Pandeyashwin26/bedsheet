@@ -1,14 +1,31 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const BASE_URL =
-  process.env.EXPO_PUBLIC_BACKEND_URL || 'http://YOUR_BACKEND_URL:8000';
-const CACHE_PREFIX = 'agrichain_api_cache_v1';
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+/**
+ * AgriChain API Service
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * Production-ready API client with caching, error handling, and offline fallback.
+ * Connects to the AgriChain FastAPI backend for all predictions and data.
+ */
 
+// Base URL configuration - use environment variable or default to localhost
+// For development: Set EXPO_PUBLIC_BACKEND_URL in your .env file
+// For production: Set to your deployed API URL
+const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+
+// Cache configuration
+const CACHE_PREFIX = 'agrichain_api_cache_v1';
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+// API client with timeout and default headers
 const apiClient = axios.create({
   baseURL: BASE_URL,
-  timeout: 9000,
+  timeout: 15000, // 15 second timeout
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
 });
 
 const CROP_MATURITY_DAYS = {
@@ -70,9 +87,42 @@ const withMeta = (payload, source) => ({
       source === 'cache'
         ? '\u{1F4F5} Using cached data'
         : source === 'mock'
-          ? null
+          ? '\u{1F4F4} Offline mode'
           : null,
+    timestamp: new Date().toISOString(),
   },
+});
+
+/**
+ * Check if the API backend is reachable and healthy.
+ * @returns {Promise<{healthy: boolean, services: object}>}
+ */
+export const checkApiHealth = async () => {
+  try {
+    const response = await apiClient.get('/health');
+    return {
+      healthy: response.data?.status === 'healthy',
+      services: response.data?.services || {},
+      version: response.data?.version,
+    };
+  } catch (error) {
+    return {
+      healthy: false,
+      services: {},
+      error: error.message,
+    };
+  }
+};
+
+/**
+ * Get the current API configuration.
+ * @returns {object} API configuration details
+ */
+export const getApiConfig = () => ({
+  baseUrl: BASE_URL,
+  timeout: apiClient.defaults.timeout,
+  cachePrefix: CACHE_PREFIX,
+  cacheTtlMs: CACHE_TTL_MS,
 });
 
 const readCachedPayload = async (cacheKey) => {
@@ -111,6 +161,13 @@ const writeCachedPayload = async (cacheKey, payload) => {
   }
 };
 
+/**
+ * Make an API request with automatic fallback to cache or mock data.
+ * Implements a three-tier fallback strategy:
+ * 1. Try network request to backend
+ * 2. Fall back to cached response if available
+ * 3. Use mock data as last resort
+ */
 const requestWithFallback = async ({
   endpoint,
   payload,
@@ -123,13 +180,28 @@ const requestWithFallback = async ({
   try {
     const response = await apiClient.post(endpoint, payload);
     const data = response?.data || {};
+
+    // Validate response has expected structure
+    if (typeof data !== 'object') {
+      throw new Error('Invalid response format');
+    }
+
+    // Cache successful response
     await writeCachedPayload(cacheKey, data);
     return withMeta(data, 'network');
-  } catch {
+  } catch (error) {
+    // Log error for debugging (in production, send to monitoring)
+    if (__DEV__) {
+      console.warn(`API request failed for ${endpoint}:`, error.message);
+    }
+
+    // Try cached data first
     const cachedPayload = await readCachedPayload(cacheKey);
     if (cachedPayload) {
       return withMeta(cachedPayload, 'cache');
     }
+
+    // Last resort: use mock data
     return withMeta(mockFactory(), 'mock');
   }
 };

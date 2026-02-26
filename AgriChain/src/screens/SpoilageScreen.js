@@ -1,6 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Slider from '@react-native-community/slider';
-import { Animated, Linking, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  Animated,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { Appbar, Button, Card, Menu, Text, ActivityIndicator } from 'react-native-paper';
 import Svg, { Circle } from 'react-native-svg';
 import { CROP_OPTIONS, STORAGE_OPTIONS } from '../data/agriOptions';
@@ -180,12 +187,33 @@ export default function SpoilageScreen({ navigation, route }) {
       screen: 'ARIA',
       params: {
         topic: 'calcium-chloride-storage',
+        context: {
+          crop,
+          district,
+          risk_category: riskResponse?.risk_category || 'Medium',
+          last_recommendation: 'Apply calcium chloride + warehouse storage',
+        },
       },
     });
   };
 
   const openSellNow = () => {
     navigation.navigate('MainTabs', { screen: 'Market' });
+  };
+
+  const openAriaAssistant = () => {
+    navigation.navigate('MainTabs', {
+      screen: 'ARIA',
+      params: {
+        context: {
+          crop,
+          district,
+          risk_category: riskResponse?.risk_category || 'Medium',
+          last_recommendation:
+            actions?.[0]?.action || 'Review spoilage preservation actions',
+        },
+      },
+    });
   };
 
   const handleAction = (action) => {
@@ -411,6 +439,14 @@ export default function SpoilageScreen({ navigation, route }) {
           </Card>
         ) : null}
       </ScrollView>
+
+      <TouchableOpacity
+        style={styles.ariaFab}
+        activeOpacity={0.9}
+        onPress={openAriaAssistant}
+      >
+        <Text style={styles.ariaFabText}>{'\u{1F3A4} ARIA'}</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -627,5 +663,24 @@ const styles = StyleSheet.create({
     color: '#2A3640',
     fontSize: 14,
     lineHeight: 21,
+  },
+  ariaFab: {
+    position: 'absolute',
+    right: 18,
+    bottom: 22,
+    borderRadius: 999,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  ariaFabText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 13,
   },
 });

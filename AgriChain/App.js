@@ -1,18 +1,22 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Provider as PaperProvider, MD3LightTheme } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import AriaScreen from './src/screens/AriaScreen';
+import AlertsScreen from './src/screens/AlertsScreen';
+import ARIAScreen from './src/screens/AriaScreen';
 import CropInputScreen from './src/screens/CropInputScreen';
+import DiseaseScreen from './src/screens/DiseaseScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import MarketScreen from './src/screens/MarketScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import RecommendationScreen from './src/screens/RecommendationScreen';
+import SchemesScreen from './src/screens/SchemesScreen';
 import SpoilageScreen from './src/screens/SpoilageScreen';
 import { COLORS } from './src/theme/colors';
+import { setupNotifications, showPermissionResult } from './src/services/notificationService';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -49,6 +53,8 @@ const getTabIcon = (routeName) => {
       return 'home';
     case 'Market':
       return 'chart-line';
+    case 'Disease':
+      return 'microscope';
     case 'ARIA':
       return 'microphone';
     case 'Profile':
@@ -66,7 +72,7 @@ function MainTabs() {
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: '#7A7A7A',
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: '600',
         },
         tabBarStyle: {
@@ -92,13 +98,21 @@ function MainTabs() {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Market" component={MarketScreen} />
-      <Tab.Screen name="ARIA" component={AriaScreen} />
+      <Tab.Screen name="Disease" component={DiseaseScreen} options={{ tabBarLabel: 'Scan' }} />
+      <Tab.Screen name="ARIA" component={ARIAScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
 }
 
 export default function App() {
+  useEffect(() => {
+    (async () => {
+      const granted = await setupNotifications();
+      showPermissionResult(granted);
+    })();
+  }, []);
+
   return (
     <SafeAreaProvider>
       <PaperProvider theme={paperTheme}>
@@ -111,6 +125,8 @@ export default function App() {
               component={RecommendationScreen}
             />
             <Stack.Screen name="Spoilage" component={SpoilageScreen} />
+            <Stack.Screen name="Alerts" component={AlertsScreen} />
+            <Stack.Screen name="Schemes" component={SchemesScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </PaperProvider>

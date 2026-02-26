@@ -157,6 +157,21 @@ export default function RecommendationScreen({ navigation, route }) {
     });
   };
 
+  const openAriaAssistant = () => {
+    navigation.navigate('MainTabs', {
+      screen: 'ARIA',
+      params: {
+        context: {
+          crop: formData.crop,
+          district: formData.district,
+          risk_category: 'Medium',
+          last_recommendation:
+            harvestData?.recommendation || 'Review current harvest recommendation',
+        },
+      },
+    });
+  };
+
   const renderWhyReasons = () => {
     const reasons = [
       explanationData?.weather_reason,
@@ -291,6 +306,14 @@ export default function RecommendationScreen({ navigation, route }) {
           {'\u{1F4E6} Check Spoilage Risk'}
         </Button>
       </ScrollView>
+
+      <TouchableOpacity
+        style={styles.ariaFab}
+        activeOpacity={0.9}
+        onPress={openAriaAssistant}
+      >
+        <Text style={styles.ariaFabText}>{'\u{1F3A4} ARIA'}</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -491,5 +514,24 @@ const styles = StyleSheet.create({
   },
   spoilageButtonContent: {
     minHeight: 54,
+  },
+  ariaFab: {
+    position: 'absolute',
+    right: 18,
+    bottom: 22,
+    borderRadius: 999,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  ariaFabText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 13,
   },
 });

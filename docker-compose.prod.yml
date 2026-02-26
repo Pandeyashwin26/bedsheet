@@ -1,0 +1,25 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# AgriChain - Production Docker Compose Override
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+
+services:
+  api:
+    container_name: agrichain-api-prod
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=WARNING
+      - LOG_JSON_FORMAT=true
+    volumes: []  # Remove volume mount in production
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    restart: always

@@ -1,0 +1,44 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# AgriChain - Docker Compose Configuration
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Usage:
+#   Development: docker-compose up
+#   Production:  docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
+#   Rebuild:     docker-compose up --build
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+
+services:
+  # ─── API Service ────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./agrichain-backend
+      dockerfile: Dockerfile
+    container_name: agrichain-api
+    ports:
+      - "8000:8000"
+    environment:
+      - NODE_ENV=development
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - LOG_LEVEL=INFO
+      - LOG_JSON_FORMAT=false
+    env_file:
+      - .env
+    volumes:
+      # Mount source for hot-reload in development
+      - ./agrichain-backend:/app:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - agrichain-network
+
+networks:
+  agrichain-network:
+    driver: bridge

@@ -9,10 +9,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * Connects to the AGRI-मित्र FastAPI backend for all predictions and data.
  */
 
-// Base URL configuration - use environment variable or default to localhost
+// Base URL configuration - use environment variable or default to LAN IP
 // For development: Set EXPO_PUBLIC_BACKEND_URL in your .env file
 // For production: Set to your deployed API URL
-const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+// NOTE: localhost won't work on physical devices — use your computer's LAN IP
+const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.17.16.40:8000';
 
 // Cache configuration
 const CACHE_PREFIX = 'agrimitra_api_cache_v1';

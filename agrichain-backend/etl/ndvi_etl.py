@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 import math
 
 from sqlalchemy.orm import Session
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import IntegrityError
 
 from core.config import settings
 from core.logging import get_logger
@@ -195,7 +195,7 @@ class NDVIETL:
         lon: float,
         source: str = "sentinel2",
     ) -> int:
-        """Store NDVI records in PostgreSQL."""
+        """Store NDVI records in the database."""
         if not records:
             return 0
 
@@ -211,7 +211,7 @@ class NDVIETL:
             plateau = self.detect_plateau(ndvi_values[:i + 1])
 
             try:
-                stmt = pg_insert(NDVIRecord).values(
+                self.db.add(NDVIRecord(
                     lat=lat,
                     lon=lon,
                     district=district,
@@ -220,10 +220,11 @@ class NDVIETL:
                     ndvi_trend_30d=trend_30d,
                     growth_plateau=plateau,
                     source=source,
-                ).on_conflict_do_nothing()
-                result = self.db.execute(stmt)
-                if result.rowcount > 0:
-                    inserted += 1
+                ))
+                self.db.flush()
+                inserted += 1
+            except IntegrityError:
+                self.db.rollback()
             except Exception as exc:
                 logger.warning(f"Failed to insert NDVI record: {exc}")
                 self.db.rollback()

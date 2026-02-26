@@ -9,10 +9,39 @@ known mandi locations.
 
 import json
 from sqlalchemy.orm import Session
-from db.models import CropMeta, SoilProfile, TransportRoute
+from db.models import CropMeta, SoilProfile, TransportRoute, User
+from passlib.context import CryptContext
 from core.logging import get_logger
 
 logger = get_logger("agrimitra.seed")
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# ── Demo Users ───────────────────────────────────────────────────────────────
+
+USER_SEED = [
+    {
+        "phone": "9876543001", "full_name": "Prem",
+        "password": "prem123456",
+        "district": "Nashik", "state": "Maharashtra",
+        "main_crop": "onion", "farm_size_acres": 5.0,
+        "soil_type": "black", "language": "hi",
+    },
+    {
+        "phone": "9876543002", "full_name": "Bhumi",
+        "password": "bhumi123456",
+        "district": "Pune", "state": "Maharashtra",
+        "main_crop": "tomato", "farm_size_acres": 3.5,
+        "soil_type": "red", "language": "hi",
+    },
+    {
+        "phone": "9876543003", "full_name": "Ashwin",
+        "password": "ashwin123456",
+        "district": "Nagpur", "state": "Maharashtra",
+        "main_crop": "wheat", "farm_size_acres": 8.0,
+        "soil_type": "alluvial", "language": "en",
+    },
+]
 
 # ── FAO Post-Harvest Loss + Crop Parameters ─────────────────────────────────
 
@@ -222,9 +251,25 @@ def seed_transport_routes(db: Session) -> int:
     return count
 
 
+def seed_users(db: Session) -> int:
+    """Seed demo user accounts: Prem, Bhumi, Ashwin."""
+    count = 0
+    for item in USER_SEED:
+        exists = db.query(User).filter(User.phone == item["phone"]).first()
+        if not exists:
+            user_data = {k: v for k, v in item.items() if k != "password"}
+            user_data["password_hash"] = pwd_context.hash(item["password"])
+            db.add(User(**user_data))
+            count += 1
+    db.commit()
+    logger.info(f"Seeded {count} demo user accounts")
+    return count
+
+
 def run_all_seeds(db: Session) -> dict:
     """Run all seed operations."""
     results = {
+        "users": seed_users(db),
         "crop_meta": seed_crop_meta(db),
         "soil_profiles": seed_soil_profiles(db),
         "transport_routes": seed_transport_routes(db),

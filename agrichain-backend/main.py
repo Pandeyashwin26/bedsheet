@@ -85,9 +85,7 @@ async def lifespan(app: FastAPI):
     etl_scheduler = None
     if settings.etl_enabled:
         try:
-            from db.session import SessionLocal as ETLSession
-            etl_db = ETLSession()
-            etl_scheduler = ETLScheduler(etl_db)
+            etl_scheduler = ETLScheduler()
             etl_scheduler.start()
             logger.info("✅ ETL scheduler started")
 

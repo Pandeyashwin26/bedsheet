@@ -11,7 +11,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
-const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.17.16.40:8000';
 
 const TOKEN_KEY = '@agrimitra_auth_token';
 const USER_KEY = '@agrimitra_auth_user';
@@ -103,9 +103,16 @@ export function AuthProvider({ children }) {
   }, [saveSession]);
 
   const login = useCallback(async (phone, password) => {
-    const { data } = await authApi.post('/auth/login', { phone, password });
-    await saveSession(data.access_token, data.user);
-    return data;
+    console.log('[Auth] login attempt:', phone, BASE_URL);
+    try {
+      const { data } = await authApi.post('/auth/login', { phone, password });
+      console.log('[Auth] login success:', data.user?.full_name);
+      await saveSession(data.access_token, data.user);
+      return data;
+    } catch (err) {
+      console.log('[Auth] login error:', err.message, err.code, err?.response?.status);
+      throw err;
+    }
   }, [saveSession]);
 
   const logout = useCallback(async () => {

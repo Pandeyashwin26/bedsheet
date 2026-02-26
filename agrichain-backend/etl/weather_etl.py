@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 
 import requests
 from sqlalchemy.orm import Session
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import IntegrityError
 
 from core.config import settings
 from core.logging import get_logger
@@ -123,7 +123,7 @@ class WeatherETL:
         lat: float,
         lon: float,
     ) -> int:
-        """Upsert weather records into PostgreSQL."""
+        """Insert weather records (skip duplicates)."""
         if not records:
             return 0
 
@@ -138,12 +138,12 @@ class WeatherETL:
                     "source": "nasa_power",
                     **record,
                 }
-                stmt = pg_insert(WeatherRecord).values(**values).on_conflict_do_nothing(
-                    constraint="uq_weather_record"
-                )
-                result = self.db.execute(stmt)
-                if result.rowcount > 0:
-                    inserted += 1
+                self.db.add(WeatherRecord(**values))
+                self.db.flush()
+                inserted += 1
+            except IntegrityError:
+                self.db.rollback()
+                continue
             except Exception as exc:
                 logger.warning(f"Failed to insert weather record: {exc}")
                 self.db.rollback()

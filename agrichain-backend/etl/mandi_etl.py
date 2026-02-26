@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 
 import requests
 from sqlalchemy.orm import Session
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import text
 
 from core.config import settings
@@ -129,20 +129,19 @@ class MandiETL:
         }
 
     def load_records(self, records: List[Dict[str, Any]]) -> int:
-        """Upsert transformed records into PostgreSQL."""
+        """Insert transformed records (skip duplicates)."""
         if not records:
             return 0
 
         inserted = 0
         for record in records:
             try:
-                # Use upsert (INSERT ... ON CONFLICT DO NOTHING)
-                stmt = pg_insert(MandiPrice).values(**record).on_conflict_do_nothing(
-                    constraint="uq_mandi_record"
-                )
-                result = self.db.execute(stmt)
-                if result.rowcount > 0:
-                    inserted += 1
+                self.db.add(MandiPrice(**record))
+                self.db.flush()
+                inserted += 1
+            except IntegrityError:
+                self.db.rollback()
+                continue
             except Exception as exc:
                 logger.warning(f"Failed to insert record: {exc}")
                 self.db.rollback()

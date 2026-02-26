@@ -7,6 +7,7 @@ import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   TextInput,
   TouchableOpacity,
@@ -98,17 +99,18 @@ export default function RegisterScreen({ navigation }) {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+      <StatusBar barStyle="dark-content" backgroundColor="#F5F0E8" />
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        {/* ── Header ────────────────────────────────────────────────── */}
+        {/* ── Logo Header ──────────────────────────────────────────── */}
         <View style={styles.header}>
-          <View style={styles.logoCircle}>
-            <MaterialCommunityIcons name="sprout" size={40} color="#fff" />
-          </View>
-          <Text style={styles.appName}>AGRI-मित्र</Text>
+          <Image
+            source={require('../../assets/logo (2).jpeg')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={styles.tagline}>{t('auth.createAccount')}</Text>
         </View>
 
@@ -314,26 +316,21 @@ export default function RegisterScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.primary },
+  container: { flex: 1, backgroundColor: '#F5F0E8' },
   scroll: { flexGrow: 1 },
 
-  header: { alignItems: 'center', paddingTop: 40, marginBottom: 14 },
-  logoCircle: {
-    width: 70, height: 70, borderRadius: 35,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center', alignItems: 'center', marginBottom: 8,
-  },
-  appName: { fontSize: 24, fontWeight: '800', color: '#fff' },
-  tagline: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  header: { alignItems: 'center', paddingTop: 30, marginBottom: 10 },
+  logo: { width: 180, height: 140 },
+  tagline: { fontSize: 13, color: '#666', marginTop: 2, fontStyle: 'italic' },
 
   progressRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     marginBottom: 16,
   },
-  progressDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.3)' },
-  progressActive: { backgroundColor: '#fff' },
-  progressBar: { width: 50, height: 3, backgroundColor: 'rgba(255,255,255,0.3)', marginHorizontal: 4 },
-  progressBarActive: { backgroundColor: '#fff' },
+  progressDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#ccc' },
+  progressActive: { backgroundColor: COLORS.primary },
+  progressBar: { width: 50, height: 3, backgroundColor: '#ccc', marginHorizontal: 4 },
+  progressBarActive: { backgroundColor: COLORS.primary },
 
   card: {
     backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,

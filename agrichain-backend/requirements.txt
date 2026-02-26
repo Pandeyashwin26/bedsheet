@@ -20,8 +20,8 @@ cachetools>=5.3.0,<6.0
 
 # ─── Database ─────────────────────────────────────────────────────────────────
 sqlalchemy>=2.0.25,<3.0
-psycopg2-binary>=2.9.9,<3.0
 alembic>=1.13.0,<2.0
+# psycopg2-binary>=2.9.9,<3.0  # Uncomment if using PostgreSQL
 
 # ─── ETL & Scheduling ────────────────────────────────────────────────────────
 apscheduler>=3.10.4,<4.0

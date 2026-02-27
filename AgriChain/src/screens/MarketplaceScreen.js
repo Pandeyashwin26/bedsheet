@@ -131,7 +131,8 @@ export default function MarketplaceScreen({ navigation }) {
         <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 60 }} />
       ) : (
         <ScrollView style={{ flex: 1 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          keyboardShouldPersistTaps="handled">
 
           {/* ── PRODUCTS TAB ── */}
           {tab === 'products' && (

@@ -130,6 +130,7 @@ export default function DigitalTwinScreen({ navigation }) {
       <ScrollView
         style={styles.scrollView}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Create form */}
         {showCreate && (

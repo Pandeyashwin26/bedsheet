@@ -195,7 +195,7 @@ function MemoryPeekCard({ memories, onDismiss }) {
 
 // ─── Message Bubble Component ────────────────────────────────────────────────
 
-function MessageBubble({ message, onReplay, onQuickReply, currentEmotion }) {
+const MessageBubble = React.memo(function MessageBubble({ message, onReplay, onQuickReply, currentEmotion }) {
   const isUser = message.role === 'user';
 
   return (
@@ -257,7 +257,7 @@ function MessageBubble({ message, onReplay, onQuickReply, currentEmotion }) {
       )}
     </View>
   );
-}
+});
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Main Screen
@@ -624,9 +624,9 @@ export default function ARIAScreen({ route, navigation }) {
     }
   };
 
-  const onReplayMessage = (message) => {
+  const onReplayMessage = useCallback((message) => {
     speakText(message.text, message.languageCode || selectedLanguage.code, message.id);
-  };
+  }, [selectedLanguage.code]);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Render
@@ -748,6 +748,8 @@ export default function ARIAScreen({ route, navigation }) {
             )}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="none"
           />
         )}
 

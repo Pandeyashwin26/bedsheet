@@ -122,7 +122,7 @@ export default function ProfileScreen({ navigation }) {
         <Text style={styles.headerPhone}>{user.phone}</Text>
       </View>
 
-      <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
+      <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>{t('profile.personalInfo')}</Text>

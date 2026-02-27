@@ -16,7 +16,7 @@ import numpy as np
 from sqlalchemy.orm import Session
 
 from core.logging import get_logger
-from db.models import CropMeta, WeatherRecord, TransportRoute, NDVIRecord
+from db.models import CropMeta, WeatherRecord, TransportRoute, NDVIRecord, SoilProfile
 
 logger = get_logger("agrimitra.ml.spoilage")
 
@@ -125,6 +125,9 @@ class SpoilageModel:
         # --- Factor 5: Crop health from NDVI ---
         health_factor = self._compute_health_factor(district, commodity)
 
+        # --- Factor 6: Soil quality impact on produce quality ---
+        soil_factor = self._compute_soil_factor(district)
+
         # --- Storage and packaging modifiers ---
         storage_mult = STORAGE_MULTIPLIERS.get(storage_type, 1.0)
         packaging_mult = PACKAGING_MULTIPLIERS.get(packaging, 1.0)
@@ -135,11 +138,12 @@ class SpoilageModel:
 
         # Environmental multiplier (product of normalized factors)
         env_multiplier = (
-            (1 + temp_factor * 0.4)     # Temperature contributes 40%
-            * (1 + humidity_factor * 0.2) # Humidity 20%
-            * (1 + transit_factor * 0.2)  # Transit 20%
-            * (1 + time_factor * 0.15)    # Time decay 15%
-            * (1 + health_factor * 0.05)  # Pre-harvest health 5%
+            (1 + temp_factor * 0.35)      # Temperature contributes 35%
+            * (1 + humidity_factor * 0.18)  # Humidity 18%
+            * (1 + transit_factor * 0.18)   # Transit 18%
+            * (1 + time_factor * 0.14)      # Time decay 14%
+            * (1 + health_factor * 0.05)    # Pre-harvest health 5%
+            * (1 + soil_factor * 0.10)      # Soil quality impact 10%
         )
 
         # Apply storage/packaging
@@ -179,6 +183,10 @@ class SpoilageModel:
             "crop_health": {
                 "score": round(health_factor, 3),
                 "impact": "high" if health_factor > 0.5 else "medium" if health_factor > 0.2 else "low",
+            },
+            "soil_quality": {
+                "score": round(soil_factor, 3),
+                "impact": "high" if soil_factor > 0.5 else "medium" if soil_factor > 0.2 else "low",
             },
             "storage_type": storage_type,
             "storage_multiplier": storage_mult,
@@ -361,6 +369,48 @@ class SpoilageModel:
             return 0.5  # Significant stress
         else:
             return 0.8  # Severe stress
+
+    def _compute_soil_factor(self, district: str) -> float:
+        """
+        Soil quality impact on post-harvest produce quality.
+
+        Crops grown in nutrient-deficient or pH-imbalanced soil tend to have:
+        - Lower cellular integrity → faster bruising and decay
+        - Lower sugar/starch content → reduced shelf life
+        - Weaker cell walls → more susceptible to pathogens
+
+        Sources: Soil Health Card (SHC), ICAR research
+        """
+        soil = (
+            self.db.query(SoilProfile)
+            .filter(SoilProfile.district.ilike(f"%{district.lower()}%"))
+            .first()
+        )
+
+        if not soil:
+            return 0.1  # Assume moderate if no data
+
+        sqi = soil.soil_quality_index or 0.5
+        ph = soil.ph or 7.0
+        oc = soil.organic_carbon_pct or 0.5
+
+        # Good soil = lower spoilage factor, poor soil = higher
+        # Inverted: high SQI means LESS spoilage risk from soil
+        soil_score = sqi
+
+        # pH penalty
+        if ph < 6.0 or ph > 8.0:
+            soil_score *= 0.7
+        elif ph < 6.5 or ph > 7.5:
+            soil_score *= 0.9
+
+        # Low organic carbon penalty
+        if oc < 0.4:
+            soil_score *= 0.8
+
+        # Convert to spoilage factor (inverse: good soil = low factor)
+        factor = max(0, 1.0 - soil_score)
+        return round(min(1.0, factor), 2)
 
     def _generate_recommendations(
         self,

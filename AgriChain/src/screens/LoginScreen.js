@@ -30,9 +30,17 @@ export default function LoginScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [quickLoading, setQuickLoading] = useState(null);
   const [errors, setErrors] = useState({});
 
   const passwordRef = useRef(null);
+
+  // Demo accounts for instant login
+  const DEMO_ACCOUNTS = [
+    { phone: '9999900001', password: 'demo123', label: '👨‍🌾 Demo Farmer', color: '#1B5E20' },
+    { phone: '9999900002', password: 'demo123', label: '🧅 Ramesh (Nashik)', color: '#E65100' },
+    { phone: '9999900003', password: 'demo123', label: '🍅 Sunita (Pune)', color: '#B71C1C' },
+  ];
 
   const validate = () => {
     const e = {};
@@ -51,13 +59,27 @@ export default function LoginScreen({ navigation }) {
     } catch (err) {
       let msg = err?.response?.data?.detail || '';
       if (!msg) {
-        if (err.code === 'ECONNABORTED') msg = 'Server timeout — is backend running?';
-        else if (err.message?.includes('Network Error')) msg = 'Cannot reach server. Check connection.';
+        if (err._friendlyMessage) msg = err._friendlyMessage;
+        else if (err.code === 'NO_INTERNET') msg = 'No internet connection. Check your WiFi or mobile data.';
+        else if (err.code === 'ECONNABORTED') msg = 'Server timeout — is backend running?';
+        else if (err.message?.includes('Network Error')) msg = 'Cannot reach server. Ensure backend is running and device is on the same network.';
         else msg = t('auth.loginFailed');
       }
       Alert.alert(t('common.error'), msg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleQuickLogin = async (demoPhone, demoPass, idx) => {
+    setQuickLoading(idx);
+    try {
+      await login(demoPhone, demoPass);
+    } catch (err) {
+      let msg = err?.response?.data?.detail || 'Quick login failed. Is backend running?';
+      Alert.alert('Error', msg);
+    } finally {
+      setQuickLoading(null);
     }
   };
 
@@ -148,6 +170,31 @@ export default function LoginScreen({ navigation }) {
             <View style={styles.dividerLine} />
             <Text style={styles.dividerText}>{t('auth.or')}</Text>
             <View style={styles.dividerLine} />
+          </View>
+
+          {/* ── Instant Demo Logins ─────────────────────────────────── */}
+          <Text style={styles.quickLoginTitle}>⚡ Quick Demo Login</Text>
+          <View style={styles.quickLoginRow}>
+            {DEMO_ACCOUNTS.map((acc, idx) => (
+              <TouchableOpacity
+                key={acc.phone}
+                style={[styles.quickLoginCard, { borderColor: acc.color }]}
+                onPress={() => handleQuickLogin(acc.phone, acc.password, idx)}
+                disabled={quickLoading !== null}
+                activeOpacity={0.7}
+              >
+                {quickLoading === idx ? (
+                  <ActivityIndicator size="small" color={acc.color} />
+                ) : (
+                  <>
+                    <Text style={styles.quickLoginEmoji}>{acc.label.split(' ')[0]}</Text>
+                    <Text style={[styles.quickLoginName, { color: acc.color }]}>
+                      {acc.label.split(' ').slice(1).join(' ')}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            ))}
           </View>
 
           {/* Register link */}
@@ -285,5 +332,40 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.labelMedium,
     color: COLORS.onSurfaceVariant,
     marginLeft: SPACING.xs,
+  },
+
+  /* Quick Demo Login styles */
+  quickLoginTitle: {
+    ...TYPOGRAPHY.labelMedium,
+    color: COLORS.onSurfaceVariant,
+    textAlign: 'center',
+    marginBottom: SPACING.sm,
+    fontWeight: '600',
+  },
+  quickLoginRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: SPACING.lg,
+  },
+  quickLoginCard: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderRadius: RADIUS.md,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.surfaceVariant,
+    minHeight: 72,
+  },
+  quickLoginEmoji: {
+    fontSize: 22,
+    marginBottom: 4,
+  },
+  quickLoginName: {
+    ...TYPOGRAPHY.labelSmall,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });

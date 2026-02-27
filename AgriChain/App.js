@@ -32,12 +32,16 @@ import CropDiaryScreen from './src/screens/CropDiaryScreen';
 import MarketplaceScreen from './src/screens/MarketplaceScreen';
 import BuyerConnectScreen from './src/screens/BuyerConnectScreen';
 import ColdStorageScreen from './src/screens/ColdStorageScreen';
+import SoilHealthScreen from './src/screens/SoilHealthScreen';
+import DealScreen from './src/screens/DealScreen';
 import { COLORS, ELEVATION } from './src/theme/colors';
 import { setupNotifications, showPermissionResult } from './src/services/notificationService';
 import { AriaProvider } from './src/context/AriaContext';
 import AriaOverlay from './src/components/AriaOverlay';
 import { LanguageProvider } from './src/context/LanguageContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { NetworkProvider } from './src/context/NetworkContext';
+import ConnectivityBanner from './src/components/ConnectivityBanner';
 
 const navigationRef = createNavigationContainerRef();
 
@@ -179,6 +183,8 @@ function AppNavigator() {
       <Stack.Screen name="Marketplace" component={MarketplaceScreen} />
       <Stack.Screen name="BuyerConnect" component={BuyerConnectScreen} />
       <Stack.Screen name="ColdStorage" component={ColdStorageScreen} />
+      <Stack.Screen name="SoilHealth" component={SoilHealthScreen} />
+      <Stack.Screen name="Deals" component={DealScreen} />
     </Stack.Navigator>
   );
 }
@@ -195,14 +201,17 @@ export default function App() {
     <SafeAreaProvider>
       <PaperProvider theme={paperTheme}>
         <LanguageProvider>
-          <AuthProvider>
-            <AriaProvider navigationRef={navigationRef}>
-              <NavigationContainer theme={navTheme} ref={navigationRef}>
-                <AppNavigator />
-                <AriaOverlay />
-              </NavigationContainer>
-            </AriaProvider>
-          </AuthProvider>
+          <NetworkProvider>
+            <AuthProvider>
+              <AriaProvider navigationRef={navigationRef}>
+                <NavigationContainer theme={navTheme} ref={navigationRef}>
+                  <AppNavigator />
+                  <AriaOverlay />
+                  <ConnectivityBanner />
+                </NavigationContainer>
+              </AriaProvider>
+            </AuthProvider>
+          </NetworkProvider>
         </LanguageProvider>
       </PaperProvider>
     </SafeAreaProvider>

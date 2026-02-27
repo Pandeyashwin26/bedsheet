@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from core.logging import get_logger
-from db.models import CropMeta, WeatherRecord, NDVIRecord, MandiPrice
+from db.models import CropMeta, WeatherRecord, NDVIRecord, MandiPrice, SoilProfile
 
 logger = get_logger("agrimitra.ml.harvest")
 
@@ -103,7 +103,10 @@ class HarvestModel:
         # === Signal 4: Price Timing ===
         price_signal = self._assess_price_timing(commodity, district)
 
-        # === Signal 5: Composite Decision ===
+        # === Signal 5: Soil Quality ===
+        soil_signal = self._assess_soil_quality(district)
+
+        # === Signal 6: Composite Decision ===
         decision = self._make_decision(
             maturity_signal, ndvi_signal, weather_signal, price_signal, meta
         )
@@ -119,9 +122,10 @@ class HarvestModel:
                 "ndvi": ndvi_signal,
                 "weather": weather_signal,
                 "price": price_signal,
+                "soil": soil_signal,
             },
             "confidence": self._compute_confidence(
-                maturity_signal, ndvi_signal, weather_signal
+                maturity_signal, ndvi_signal, weather_signal, soil_signal
             ),
             "model_version": "1.0.0",
         }
@@ -379,6 +383,82 @@ class HarvestModel:
                           f"Market timing is neutral.",
             }
 
+    def _assess_soil_quality(self, district: str) -> Dict[str, Any]:
+        """
+        Assess soil quality impact on harvest readiness.
+
+        Soil with high NPK and good pH supports better crop development,
+        potentially accelerating maturity. Poor soil can delay maturity
+        and reduce crop quality.
+
+        Sources: Soil Health Card (SHC), ICAR data
+        """
+        soil = (
+            self.db.query(SoilProfile)
+            .filter(SoilProfile.district.ilike(f"%{district.lower()}%"))
+            .first()
+        )
+
+        if not soil:
+            return {
+                "status": "no_data",
+                "score": 0.5,
+                "detail": "No soil health data for this district.",
+                "source": "soil_health_card",
+            }
+
+        sqi = soil.soil_quality_index or 0.5
+        ph = soil.ph or 7.0
+        n = soil.nitrogen_kg_ha or 200
+        oc = soil.organic_carbon_pct or 0.5
+
+        # pH deviation from ideal (6.5-7.5)
+        ph_penalty = 0
+        if ph < 6.0 or ph > 8.0:
+            ph_penalty = 0.15
+        elif ph < 6.5 or ph > 7.5:
+            ph_penalty = 0.05
+
+        # Nitrogen adequacy
+        n_factor = min(1.0, n / 250)
+
+        # Organic carbon adequacy
+        oc_factor = min(1.0, oc / 0.75)
+
+        # Combined soil score: how supportive is the soil for crop growth?
+        soil_score = (sqi * 0.4 + n_factor * 0.3 + oc_factor * 0.2 + (1 - ph_penalty) * 0.1)
+        soil_score = round(min(1.0, max(0, soil_score)), 2)
+
+        if soil_score > 0.7:
+            status = "good"
+            detail = (
+                f"Soil quality is good (SQI: {sqi:.2f}, pH: {ph}, N: {n} kg/ha). "
+                f"Supports timely crop maturity."
+            )
+        elif soil_score > 0.5:
+            status = "moderate"
+            detail = (
+                f"Soil quality is moderate (SQI: {sqi:.2f}, pH: {ph}, N: {n} kg/ha). "
+                f"Crop maturity may be slightly delayed."
+            )
+        else:
+            status = "poor"
+            detail = (
+                f"Soil quality is poor (SQI: {sqi:.2f}, pH: {ph}, N: {n} kg/ha). "
+                f"Expect delayed maturity and potentially lower yield quality."
+            )
+
+        return {
+            "status": status,
+            "score": soil_score,
+            "quality_index": round(sqi, 2),
+            "ph": ph,
+            "nitrogen_kg_ha": n,
+            "organic_carbon_pct": oc,
+            "detail": detail,
+            "source": "soil_health_card",
+        }
+
     def _make_decision(
         self,
         maturity: Dict,
@@ -493,20 +573,25 @@ class HarvestModel:
         maturity: Dict,
         ndvi: Dict,
         weather: Dict,
+        soil: Dict = None,
     ) -> float:
         """Compute overall confidence based on data availability."""
         conf = 0.5  # Base
 
         # Maturity known
         if maturity.get("status") != "unknown":
-            conf += 0.15
+            conf += 0.12
 
         # NDVI data available
         if ndvi.get("status") != "no_data":
-            conf += 0.15
+            conf += 0.12
 
         # Weather data available
         if weather.get("status") != "no_data":
-            conf += 0.15
+            conf += 0.12
+
+        # Soil data available
+        if soil and soil.get("status") != "no_data":
+            conf += 0.08
 
         return round(min(0.95, conf), 2)

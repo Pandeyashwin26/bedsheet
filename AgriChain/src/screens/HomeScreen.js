@@ -23,16 +23,14 @@ const ACTION_CARDS = [
   { icon: 'leaf-circle-outline',color: '#2E7D32', bg: '#F1F8E9', titleKey: 'home.diseaseScanner', subtitleKey: 'home.diseaseScannerSub', tab: 'Disease' },
   { icon: 'bank',               color: '#4527A0', bg: '#EDE7F6', titleKey: 'home.govtSchemes',    subtitleKey: 'home.govtSchemesSub',    route: 'Schemes' },
   { icon: 'bell-ring-outline',  color: '#C62828', bg: '#FFEBEE', titleKey: 'home.smartAlerts',    subtitleKey: 'home.smartAlertsSub',    route: 'Alerts' },
+  { icon: 'earth',              color: '#795548', bg: '#EFEBE9', titleKey: 'soilHealth.cardTitle', subtitleKey: 'soilHealth.cardSub',     route: 'SoilHealth' },
+  { icon: 'handshake',           color: '#1565C0', bg: '#E3F2FD', titleKey: 'deals.cardTitle',     subtitleKey: 'deals.cardSub',          route: 'Deals' },
 ];
 
 export default function HomeScreen({ navigation }) {
   const { t } = useLanguage();
   const { user } = useAuth();
   const district = user?.district || 'Nashik';
-
-  const openAriaAssistant = () => {
-    navigation.navigate('ARIA');
-  };
 
   const handleCardPress = (card) => {
     if (card.route) navigation.navigate(card.route);
@@ -102,16 +100,6 @@ export default function HomeScreen({ navigation }) {
           ))}
         </View>
       </ScrollView>
-
-      {/* ── ARIA FAB ──────────────────────────────────────────────── */}
-      <TouchableOpacity
-        style={styles.ariaFab}
-        activeOpacity={0.85}
-        onPress={openAriaAssistant}
-      >
-        <MaterialCommunityIcons name="robot-outline" size={22} color="#fff" />
-        <Text style={styles.ariaFabText}>{t('home.ariaFab')}</Text>
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -198,23 +186,5 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.bodySmall,
     color: COLORS.onSurfaceVariant,
     marginTop: 2,
-  },
-  ariaFab: {
-    position: 'absolute',
-    right: SPACING.md,
-    bottom: 88,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    borderRadius: RADIUS.lg,
-    backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.lg,
-    ...ELEVATION.level3,
-  },
-  ariaFabText: {
-    ...TYPOGRAPHY.labelLarge,
-    color: COLORS.onPrimary,
-    fontWeight: '700',
   },
 });

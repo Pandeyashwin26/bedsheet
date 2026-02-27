@@ -506,3 +506,78 @@ class StorageReading(Base):
     __table_args__ = (
         Index("ix_storage_user_device", "user_id", "device_id"),
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Blockchain Trust Layer — On-Chain Proofs, Trades & Settlements
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class ProofRecord(Base):
+    """On-chain recommendation proof anchored to Polygon."""
+    __tablename__ = "proof_records"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    crop = Column(String(100), nullable=False)
+    region = Column(String(100), nullable=False)
+    input_hash = Column(String(66), nullable=False)         # keccak256 of input data
+    output_hash = Column(String(66), nullable=False)        # keccak256 of recommendation
+    model_version = Column(String(50), nullable=False)
+    tx_hash = Column(String(66), nullable=True, unique=True)  # Polygon tx hash
+    block_number = Column(Integer, nullable=True)
+    status = Column(String(20), default="pending")          # pending|confirmed|failed
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("ix_proof_user_crop", "user_id", "crop"),
+    )
+
+
+class TradeRecord(Base):
+    """On-chain trade agreement between farmer & buyer."""
+    __tablename__ = "trade_records"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    seller_id = Column(Integer, nullable=False, index=True)
+    buyer_id = Column(Integer, nullable=False, index=True)
+    crop = Column(String(100), nullable=False)
+    quantity_kg = Column(Float, nullable=False)
+    price_per_kg = Column(Float, nullable=False)
+    total_amount = Column(Float, nullable=False)
+    quality_grade = Column(String(10), nullable=True)       # A|B|C
+    delivery_deadline = Column(DateTime, nullable=True)
+    penalty_rate = Column(Float, default=0.0)               # 0-100 %
+    status = Column(String(30), default="created")          # created|confirmed|delivered|cancelled|disputed
+    contract_trade_id = Column(Integer, nullable=True)      # on-chain trade index
+    tx_hash = Column(String(66), nullable=True)
+    block_number = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
+                        onupdate=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("ix_trade_seller_buyer", "seller_id", "buyer_id"),
+    )
+
+
+class SettlementRecord(Base):
+    """On-chain escrow settlement for a trade."""
+    __tablename__ = "settlement_records"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    trade_id = Column(Integer, nullable=False, index=True)
+    amount = Column(Float, nullable=False)
+    currency = Column(String(10), default="INR")
+    status = Column(String(30), default="pending")          # pending|locked|released|refunded|penalized
+    escrow_tx_hash = Column(String(66), nullable=True)      # lock tx
+    release_tx_hash = Column(String(66), nullable=True)     # release/refund tx
+    block_number = Column(Integer, nullable=True)
+    penalty_amount = Column(Float, default=0.0)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
+                        onupdate=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("ix_settlement_trade", "trade_id"),
+    )

@@ -121,7 +121,7 @@ export default function NegotiationSimulatorScreen({ navigation }) {
         <Text style={[styles.headerTitle, { color: '#FFF' }]}>🤝 Negotiation Simulator</Text>
       </View>
 
-      <ScrollView style={styles.scrollView}>
+      <ScrollView style={styles.scrollView} keyboardShouldPersistTaps="handled">
         {/* ── SETUP PHASE ── */}
         {phase === 'setup' && (
           <View>

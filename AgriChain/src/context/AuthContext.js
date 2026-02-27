@@ -10,6 +10,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import NetInfo from '@react-native-community/netinfo';
 
 const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.17.16.40:8000';
 
@@ -104,6 +105,21 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (phone, password) => {
     console.log('[Auth] login attempt:', phone, BASE_URL);
+
+    // Pre-check connectivity before hitting the server
+    try {
+      const netState = await NetInfo.fetch();
+      if (!netState.isConnected || netState.isInternetReachable === false) {
+        const offlineErr = new Error('No internet connection. Check your WiFi or mobile data.');
+        offlineErr.code = 'NO_INTERNET';
+        offlineErr._friendlyMessage = offlineErr.message;
+        throw offlineErr;
+      }
+    } catch (netErr) {
+      if (netErr.code === 'NO_INTERNET') throw netErr;
+      // NetInfo itself failed — proceed with login attempt anyway
+    }
+
     try {
       const { data } = await authApi.post('/auth/login', { phone, password });
       console.log('[Auth] login success:', data.user?.full_name);
@@ -111,6 +127,12 @@ export function AuthProvider({ children }) {
       return data;
     } catch (err) {
       console.log('[Auth] login error:', err.message, err.code, err?.response?.status);
+      // Enrich error with friendly message
+      if (err.message === 'Network Error' || err.code === 'ERR_NETWORK') {
+        err._friendlyMessage = 'Cannot reach the server. Ensure backend is running and device is on the same network.';
+      } else if (err.code === 'ECONNABORTED') {
+        err._friendlyMessage = 'Server timeout — is backend running?';
+      }
       throw err;
     }
   }, [saveSession]);

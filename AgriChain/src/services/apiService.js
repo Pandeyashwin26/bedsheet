@@ -1,5 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 
 /**
  * AGRI-मित्र API Service
@@ -7,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  *
  * Production-ready API client with caching, error handling, and offline fallback.
  * Connects to the AGRI-मित्र FastAPI backend for all predictions and data.
+ * Now with NetInfo-based connectivity detection for accurate offline handling.
  */
 
 // Base URL configuration - use environment variable or default to LAN IP
@@ -28,6 +30,46 @@ const apiClient = axios.create({
     'Accept': 'application/json',
   },
 });
+
+// ─── Axios response interceptor for unified error handling ──────────────────
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    // Enrich error with connectivity info
+    if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
+      const online = await isDeviceOnline();
+      error._deviceOnline = online;
+      error._friendlyMessage = online
+        ? 'Server unreachable. Make sure backend is running and device is on the same network.'
+        : 'No internet connection. Check your WiFi or mobile data.';
+    } else if (error.code === 'ECONNABORTED') {
+      error._friendlyMessage = 'Request timed out. Server may be slow or unreachable.';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// ─── Network connectivity check (used before API calls) ─────────────────────
+let _lastNetState = { isConnected: true, isInternetReachable: true };
+
+/**
+ * Quick check if device has network connectivity using NetInfo.
+ * @returns {Promise<boolean>}
+ */
+export const isDeviceOnline = async () => {
+  try {
+    const state = await NetInfo.fetch();
+    _lastNetState = state;
+    return state.isConnected && state.isInternetReachable !== false;
+  } catch {
+    return true; // assume online if NetInfo fails
+  }
+};
+
+/**
+ * Get the last known network state (synchronous, for non-async contexts).
+ */
+export const getLastNetworkState = () => _lastNetState;
 
 const CROP_MATURITY_DAYS = {
   onion: 125,
@@ -96,21 +138,40 @@ const withMeta = (payload, source) => ({
 
 /**
  * Check if the API backend is reachable and healthy.
- * @returns {Promise<{healthy: boolean, services: object}>}
+ * First checks device connectivity via NetInfo, then pings backend.
+ * @returns {Promise<{healthy: boolean, online: boolean, services: object}>}
  */
 export const checkApiHealth = async () => {
+  // Step 1: Check device connectivity
+  const online = await isDeviceOnline();
+  if (!online) {
+    return {
+      healthy: false,
+      online: false,
+      services: {},
+      error: 'Device is offline',
+    };
+  }
+
+  // Step 2: Check backend
   try {
     const response = await apiClient.get('/health');
     return {
       healthy: response.data?.status === 'healthy',
+      online: true,
       services: response.data?.services || {},
       version: response.data?.version,
     };
   } catch (error) {
     return {
       healthy: false,
+      online: true,
       services: {},
-      error: error.message,
+      error: error.code === 'ECONNABORTED'
+        ? 'Server timeout'
+        : error.message?.includes('Network Error')
+          ? 'Server unreachable on this network'
+          : error.message,
     };
   }
 };
@@ -164,7 +225,8 @@ const writeCachedPayload = async (cacheKey, payload) => {
 
 /**
  * Make an API request with automatic fallback to cache or mock data.
- * Implements a three-tier fallback strategy:
+ * Implements a four-tier fallback strategy:
+ * 0. Check device connectivity via NetInfo
  * 1. Try network request to backend
  * 2. Fall back to cached response if available
  * 3. Use mock data as last resort
@@ -177,6 +239,15 @@ const requestWithFallback = async ({
   mockFactory,
 }) => {
   const cacheKey = buildCacheKey(endpoint, crop, district);
+
+  // Pre-check: is device online?
+  const online = await isDeviceOnline();
+  if (!online) {
+    if (__DEV__) console.warn(`[apiService] Device offline, skipping ${endpoint}`);
+    const cachedPayload = await readCachedPayload(cacheKey);
+    if (cachedPayload) return withMeta(cachedPayload, 'cache');
+    return withMeta(mockFactory(), 'mock');
+  }
 
   try {
     const response = await apiClient.post(endpoint, payload);
@@ -980,5 +1051,179 @@ export const submitStorageReading = async (payload) => {
     return resp?.data;
   } catch (e) {
     return null;
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Soil Health APIs
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Fetch comprehensive soil health report for a district
+ * Sources: Soil Health Card (SHC), ISRO Bhuvan, Sentinel-2 NDVI
+ */
+export const fetchSoilHealth = async (district = 'nashik') => {
+  try {
+    const resp = await apiClient.get(`/api/soil/health/${district}`);
+    return resp?.data;
+  } catch (e) {
+    console.warn('Soil health API error, using cached/fallback:', e.message);
+    return {
+      district,
+      state: 'Maharashtra',
+      available: true,
+      fertility: {
+        nitrogen: { value: 210, unit: 'kg/ha', rating: 'Medium' },
+        phosphorus: { value: 18, unit: 'kg/ha', rating: 'Medium' },
+        potassium: { value: 320, unit: 'kg/ha', rating: 'High' },
+      },
+      properties: {
+        ph: { value: 7.5, rating: 'Neutral (Ideal)', ideal_range: '6.5 - 7.5' },
+        organic_carbon: { value: 0.55, unit: '%', rating: 'Medium', ideal_range: '> 0.75%' },
+      },
+      quality_index: { value: 0.61, max: 1.0, label: 'Good' },
+      soil_type: {
+        name: 'Medium Black',
+        info: {
+          description: 'Moderate clay content, good fertility.',
+          water_retention: 'Medium-High',
+          drainage: 'Moderate',
+        },
+      },
+      moisture: { moisture_pct: 45, status: 'moderate', source: 'estimate' },
+      vegetation: { ndvi: 0.52, trend_30d: 0.01, status: 'Moderate', source: 'sentinel2' },
+      recommendations: [],
+      sources: [
+        { name: 'Soil Health Card', org: 'Govt. of India', type: 'fertility' },
+        { name: 'Bhuvan', org: 'ISRO', type: 'soil_moisture' },
+        { name: 'Sentinel-2 NDVI', org: 'ESA Copernicus', type: 'vegetation_health' },
+      ],
+    };
+  }
+};
+
+/**
+ * Fetch NDVI vegetation health history for charts
+ */
+export const fetchNDVIHistory = async (district = 'nashik', days = 30) => {
+  try {
+    const resp = await apiClient.get(`/api/soil/ndvi/${district}?days=${days}`);
+    return resp?.data;
+  } catch (e) {
+    return { district, days, count: 0, history: [] };
+  }
+};
+
+/**
+ * Check crop suitability for a district's soil
+ */
+export const fetchCropSuitability = async (district, crop) => {
+  try {
+    const resp = await apiClient.get(`/api/soil/crop-suitability/${district}/${crop}`);
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Blockchain Trust Layer APIs
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Get blockchain dashboard stats for a user
+ */
+export const fetchBlockchainStats = async (userId) => {
+  try {
+    const resp = await apiClient.get(`/blockchain/stats?user_id=${userId}`);
+    return resp?.data?.stats || { proofs: 0, trades: 0, settlements: 0, total_volume: 0 };
+  } catch (e) {
+    return { proofs: 0, trades: 0, settlements: 0, total_volume: 0, blockchain_live: false };
+  }
+};
+
+/**
+ * List all trades for a user (as seller or buyer)
+ */
+export const fetchUserTrades = async (userId) => {
+  try {
+    const resp = await apiClient.get(`/blockchain/trade/list?user_id=${userId}`);
+    return resp?.data?.trades || [];
+  } catch (e) {
+    return [];
+  }
+};
+
+/**
+ * Get detailed trade status with settlement info
+ */
+export const fetchTradeStatus = async (tradeId) => {
+  try {
+    const resp = await apiClient.get(`/blockchain/trade/status?trade_id=${tradeId}`);
+    return resp?.data?.trade || null;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * Create a new trade agreement (blockchain-anchored)
+ */
+export const createBlockchainTrade = async (payload) => {
+  try {
+    const resp = await apiClient.post('/blockchain/trade/create', payload);
+    return resp?.data?.trade || null;
+  } catch (e) {
+    console.warn('[apiService] createBlockchainTrade failed:', e?.message);
+    return null;
+  }
+};
+
+/**
+ * Confirm delivery for a trade
+ */
+export const confirmTradeDelivery = async (tradeId) => {
+  try {
+    const resp = await apiClient.post('/blockchain/trade/confirm-delivery', { trade_id: tradeId });
+    return resp?.data?.trade || null;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * Lock escrow funds for a trade
+ */
+export const lockTradeEscrow = async (tradeId) => {
+  try {
+    const resp = await apiClient.post('/blockchain/settlement/lock', { trade_id: tradeId });
+    return resp?.data?.settlement || null;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * Release escrowed funds after delivery
+ */
+export const releaseTradeEscrow = async (tradeId) => {
+  try {
+    const resp = await apiClient.post('/blockchain/settlement/release', { trade_id: tradeId });
+    return resp?.data?.settlement || null;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * List all recommendation proofs for a user
+ */
+export const fetchUserProofs = async (userId) => {
+  try {
+    const resp = await apiClient.get(`/blockchain/proof/list?user_id=${userId}`);
+    return resp?.data?.proofs || [];
+  } catch (e) {
+    return [];
   }
 };

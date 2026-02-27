@@ -1,8 +1,9 @@
 /**
  * AGRI-मित्र Dashboard Screen — Material Design 3
+ * Enhanced with F4 Loss Lessons, F7 Story Cards, F-feature quick links
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -18,14 +19,42 @@ import { COLORS, ELEVATION, RADIUS, SPACING, TYPOGRAPHY } from '../theme/colors'
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.17.16.40:8000';
+
 export default function DashboardScreen({ navigation }) {
   const { user, refreshProfile } = useAuth();
   const { t } = useLanguage();
   const [refreshing, setRefreshing] = useState(false);
+  const [lessons, setLessons] = useState([]);
+  const [stories, setStories] = useState([]);
+
+  // Fetch F4 loss lessons
+  const fetchLessons = async () => {
+    try {
+      const resp = await fetch(`${API_URL}/harvest-cycles/lessons/${user?.id || 1}`);
+      const data = await resp.json();
+      setLessons((data.lessons || []).slice(0, 2));
+    } catch (e) {
+      setLessons([
+        { crop: 'Onion', lesson: 'Agar 12 din pehle becha hota toh ₹1,200 zyada milte.', loss_amount: 1200, optimal_date: '2025-01-05' },
+      ]);
+    }
+  };
+
+  // Generate F7 story cards (community highlights)
+  const generateStories = () => {
+    setStories([
+      { id: 1, emoji: '🏆', title: 'Village Champion', text: 'Sharad Patil scored 92 this month!', screen: 'Leaderboard', bg: '#FFF8E1' },
+      { id: 2, emoji: '📈', title: 'Market Insight', text: 'Onion prices up 15% in Lasalgaon', screen: 'Market', bg: '#E8F5E9' },
+      { id: 3, emoji: '⚠️', title: 'Disease Alert', text: 'Thrips outbreak reported nearby', screen: 'PhotoDiagnostic', bg: '#FBE9E7' },
+    ]);
+  };
 
   useFocusEffect(
     useCallback(() => {
       refreshProfile?.().catch(() => {});
+      fetchLessons();
+      generateStories();
     }, [])
   );
 
@@ -121,6 +150,61 @@ export default function DashboardScreen({ navigation }) {
           <MaterialCommunityIcons name="chevron-right" size={24} color={COLORS.outlineVariant} />
         </TouchableOpacity>
 
+        {/* ── F7: Story Cards (Community Highlights) ───────────────── */}
+        {stories.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>📢 Community Stories</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: SPACING.sm }}>
+              {stories.map(story => (
+                <TouchableOpacity key={story.id}
+                  style={[styles.storyCard, { backgroundColor: story.bg }]}
+                  onPress={() => story.screen && navigation.navigate(story.screen)}>
+                  <Text style={{ fontSize: 28 }}>{story.emoji}</Text>
+                  <Text style={styles.storyTitle}>{story.title}</Text>
+                  <Text style={styles.storyText}>{story.text}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </>
+        )}
+
+        {/* ── F4: Loss Lessons Card ────────────────────────────────── */}
+        {lessons.length > 0 && (
+          <View style={styles.lessonsCard}>
+            <Text style={styles.lessonsHeader}>📘 Harvest Lessons</Text>
+            {lessons.map((lesson, i) => (
+              <View key={i} style={styles.lessonItem}>
+                <Text style={styles.lessonCrop}>{lesson.crop}</Text>
+                <Text style={styles.lessonText}>{lesson.lesson}</Text>
+                {lesson.loss_amount > 0 && (
+                  <Text style={styles.lessonLoss}>Potential loss: ₹{lesson.loss_amount.toLocaleString()}</Text>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* ── New Feature Quick Links ──────────────────────────────── */}
+        <Text style={styles.sectionTitle}>🚀 Explore Features</Text>
+        <View style={styles.featureGrid}>
+          {[
+            { icon: 'dna', label: 'Digital Twin', screen: 'DigitalTwin', color: '#1B5E20', bg: '#E8F5E9' },
+            { icon: 'camera-burst', label: 'Photo Scan', screen: 'PhotoDiagnostic', color: '#BF360C', bg: '#FBE9E7' },
+            { icon: 'handshake', label: 'Negotiate', screen: 'NegotiationSimulator', color: '#5D4037', bg: '#EFEBE9' },
+            { icon: 'trophy', label: 'Leaderboard', screen: 'Leaderboard', color: '#4A148C', bg: '#F3E5F5' },
+            { icon: 'notebook', label: 'Crop Diary', screen: 'CropDiary', color: '#33691E', bg: '#F1F8E9' },
+            { icon: 'cart', label: 'Marketplace', screen: 'Marketplace', color: '#E65100', bg: '#FFF3E0' },
+            { icon: 'store', label: 'B2B Connect', screen: 'BuyerConnect', color: '#0D47A1', bg: '#E3F2FD' },
+            { icon: 'snowflake', label: 'Cold Storage', screen: 'ColdStorage', color: '#01579B', bg: '#E1F5FE' },
+          ].map((f, i) => (
+            <TouchableOpacity key={i} style={[styles.featureBtn, { backgroundColor: f.bg }]}
+              onPress={() => navigation.navigate(f.screen)}>
+              <MaterialCommunityIcons name={f.icon} size={22} color={f.color} />
+              <Text style={[styles.featureBtnLabel, { color: f.color }]}>{f.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         {/* ── Member Since ──────────────────────────────────────────── */}
         <View style={styles.memberCard}>
           <MaterialCommunityIcons name="shield-check-outline" size={20} color={COLORS.primary} />
@@ -197,4 +281,31 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.md, gap: SPACING.xs,
   },
   memberText: { ...TYPOGRAPHY.labelMedium, color: COLORS.onSurfaceVariant },
+
+  // F7 Story Cards
+  storyCard: {
+    width: 160, borderRadius: RADIUS.lg, padding: SPACING.md,
+    marginRight: SPACING.sm, ...ELEVATION.level1,
+  },
+  storyTitle: { ...TYPOGRAPHY.labelLarge, color: COLORS.onSurface, fontWeight: '700', marginTop: SPACING.xs },
+  storyText: { ...TYPOGRAPHY.bodySmall, color: COLORS.onSurfaceVariant, marginTop: 2 },
+
+  // F4 Lessons
+  lessonsCard: {
+    backgroundColor: '#FFF8E1', borderRadius: RADIUS.lg, padding: SPACING.lg,
+    marginBottom: SPACING.sm, borderLeftWidth: 4, borderLeftColor: '#FF8F00',
+  },
+  lessonsHeader: { ...TYPOGRAPHY.titleSmall, color: '#E65100', marginBottom: SPACING.sm },
+  lessonItem: { marginBottom: SPACING.sm },
+  lessonCrop: { ...TYPOGRAPHY.labelLarge, color: COLORS.onSurface, fontWeight: '700' },
+  lessonText: { ...TYPOGRAPHY.bodySmall, color: COLORS.onSurfaceVariant, lineHeight: 20, marginTop: 2 },
+  lessonLoss: { ...TYPOGRAPHY.labelSmall, color: COLORS.error, marginTop: 2 },
+
+  // Feature grid
+  featureGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm, marginBottom: SPACING.md },
+  featureBtn: {
+    width: '23%', borderRadius: RADIUS.md, padding: SPACING.sm,
+    alignItems: 'center', justifyContent: 'center', minHeight: 64,
+  },
+  featureBtnLabel: { ...TYPOGRAPHY.labelSmall, marginTop: 4, textAlign: 'center', fontWeight: '600' },
 });

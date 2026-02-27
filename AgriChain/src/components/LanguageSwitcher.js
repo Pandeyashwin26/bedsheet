@@ -8,7 +8,7 @@
 
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { COLORS } from '../theme/colors';
+import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../theme/colors';
 import { useLanguage, LANGUAGES } from '../context/LanguageContext';
 
 export default function LanguageSwitcher({ style, compact = false }) {
@@ -42,24 +42,24 @@ export default function LanguageSwitcher({ style, compact = false }) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: '#F0F0F0',
-    borderRadius: 20,
+    backgroundColor: COLORS.surfaceVariant,
+    borderRadius: RADIUS.full,
     padding: 2,
   },
   pill: {
-    paddingHorizontal: 10,
+    paddingHorizontal: SPACING.sm,
     paddingVertical: 5,
-    borderRadius: 18,
+    borderRadius: RADIUS.full,
   },
   pillActive: {
     backgroundColor: COLORS.primary,
   },
   pillText: {
-    fontSize: 12,
+    ...TYPOGRAPHY.labelSmall,
     fontWeight: '600',
-    color: '#666',
+    color: COLORS.onSurfaceVariant,
   },
   pillTextActive: {
-    color: '#FFF',
+    color: COLORS.onPrimary,
   },
 });

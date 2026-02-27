@@ -16,6 +16,8 @@
     },
     "android": {
       "usesCleartextTraffic": true,
+      "package": "com.agrimitra.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -28,6 +30,12 @@
     },
     "plugins": [
       "@react-native-community/datetimepicker"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "11470b92-fad5-49f4-a254-a130cc90ee33"
+      }
+    },
+    "owner": "pandeyashwin0"
   }
 }

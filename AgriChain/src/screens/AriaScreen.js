@@ -1,4 +1,20 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+/**
+ * ARIA 2.0 — Conversational Super-Agent Screen
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * Features:
+ *   • Emotional avatar with mood-based glow colors
+ *   • Thinking animation during agent tool-calling loop
+ *   • Memory peek card ("ARIA, tujhe mere baare mein kya pata hai?")
+ *   • Daily briefing button
+ *   • Agent tool-action chips in message bubbles
+ *   • Voice recording with pulse animation
+ *   • TTS with waveform bars
+ *   • Language pill switcher
+ *   • Offline conversation cache
+ */
+
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import * as Speech from 'expo-speech';
 import {
   ActivityIndicator,
@@ -15,13 +31,22 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS } from '../theme/colors';
+import { COLORS, ELEVATION, RADIUS, SPACING, TYPOGRAPHY } from '../theme/colors';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import {
   fetchAriaReply,
   getAriaFallbackReply,
+  getAriaWelcome,
+  detectEmotion,
+  fetchMemories,
+  cacheConversation,
+  loadCachedConversation,
   transcribeWithWhisper,
 } from '../services/ariaService';
+import { getMoodConfig, getEncouragement } from '../data/dialects';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const LANGUAGE_OPTIONS = [
   { code: 'hi', label: 'हिं', speechCode: 'hi-IN' },
@@ -36,11 +61,14 @@ const createId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 const normalizeContext = (rawContext) => ({
   crop: rawContext?.crop || 'Onion',
   district: rawContext?.district || 'Nashik',
+  state: rawContext?.state || 'Maharashtra',
   risk_category: rawContext?.risk_category || rawContext?.riskCategory || 'Medium',
   last_recommendation:
     rawContext?.last_recommendation ||
     rawContext?.lastRecommendation ||
     'Review latest recommendation',
+  farm_size_acres: rawContext?.farm_size_acres || null,
+  soil_type: rawContext?.soil_type || null,
 });
 
 const getLanguageByCode = (code) =>
@@ -51,12 +79,133 @@ const createSuggestedQuestions = (context) => [
   `आज ${context.district} मंडी का भाव?`,
   'मेरी फसल खराब हो रही है क्या करूं?',
   'कौन सी खाद डालूं?',
+  'ARIA, tujhe mere baare mein kya yaad hai?',
 ];
 
-function MessageBubble({ message, onReplay, onQuickReply }) {
+// ─── Emotional Avatar Component ──────────────────────────────────────────────
+
+function EmotionalAvatar({ emotion, isThinking }) {
+  const mood = getMoodConfig(emotion);
+  const glowAnim = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, {
+          toValue: 1,
+          duration: isThinking ? 600 : 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(glowAnim, {
+          toValue: 0.4,
+          duration: isThinking ? 600 : 2000,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [emotion, isThinking, glowAnim]);
+
+  return (
+    <View style={styles.avatarContainer}>
+      <Animated.View
+        style={[
+          styles.avatarGlow,
+          {
+            backgroundColor: mood.color,
+            opacity: glowAnim,
+          },
+        ]}
+      />
+      <View style={[styles.avatarCircle, { borderColor: mood.color }]}>
+        {isThinking ? (
+          <ActivityIndicator size="small" color={COLORS.primary} />
+        ) : (
+          <MaterialCommunityIcons
+            name={mood.icon}
+            size={22}
+            color={COLORS.primary}
+          />
+        )}
+      </View>
+    </View>
+  );
+}
+
+// ─── Tool Action Chip ────────────────────────────────────────────────────────
+
+function ToolActionChip({ action }) {
+  const TOOL_ICONS = {
+    get_weather: 'weather-partly-cloudy',
+    get_mandi_prices: 'currency-inr',
+    get_user_profile: 'account-outline',
+    get_memories: 'brain',
+    store_memory: 'content-save-outline',
+    get_schemes: 'file-document-outline',
+    run_prediction: 'chart-line',
+    open_screen: 'open-in-new',
+  };
+
+  return (
+    <View style={styles.toolChip}>
+      <MaterialCommunityIcons
+        name={TOOL_ICONS[action.tool] || 'cog-outline'}
+        size={12}
+        color={COLORS.secondary}
+      />
+      <Text style={styles.toolChipText}>{action.tool.replace(/_/g, ' ')}</Text>
+    </View>
+  );
+}
+
+// ─── Memory Peek Card ────────────────────────────────────────────────────────
+
+function MemoryPeekCard({ memories, onDismiss }) {
+  if (!memories || memories.length === 0) return null;
+
+  return (
+    <View style={styles.memoryCard}>
+      <View style={styles.memoryHeader}>
+        <MaterialCommunityIcons name="brain" size={18} color={COLORS.primary} />
+        <Text style={styles.memoryTitle}>ARIA ko yaad hai</Text>
+        <TouchableOpacity onPress={onDismiss} hitSlop={8}>
+          <MaterialCommunityIcons name="close" size={18} color={COLORS.outline} />
+        </TouchableOpacity>
+      </View>
+      {memories.slice(0, 5).map((m, i) => (
+        <View key={`mem-${i}`} style={styles.memoryRow}>
+          <MaterialCommunityIcons
+            name={
+              m.memory_type === 'fact' ? 'information-outline' :
+              m.memory_type === 'preference' ? 'heart-outline' :
+              m.memory_type === 'emotion' ? 'emoticon-outline' :
+              'trophy-outline'
+            }
+            size={14}
+            color={COLORS.onSurfaceVariant}
+          />
+          <Text style={styles.memoryKey}>{m.memory_key}:</Text>
+          <Text style={styles.memoryValue} numberOfLines={1}>{m.memory_value}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// ─── Message Bubble Component ────────────────────────────────────────────────
+
+function MessageBubble({ message, onReplay, onQuickReply, currentEmotion }) {
   const isUser = message.role === 'user';
+
   return (
     <View style={[styles.messageRow, isUser ? styles.userRow : styles.assistantRow]}>
+      {!isUser && (
+        <EmotionalAvatar
+          emotion={message.emotion || currentEmotion || 'neutral'}
+          isThinking={false}
+        />
+      )}
       <View
         style={[
           styles.messageBubble,
@@ -67,7 +216,7 @@ function MessageBubble({ message, onReplay, onQuickReply }) {
           <Text style={[styles.messageText, isUser ? styles.userText : styles.assistantText]}>
             {message.text}
           </Text>
-          {!isUser ? (
+          {!isUser && (
             <TouchableOpacity
               onPress={() => onReplay(message)}
               style={styles.replayButton}
@@ -79,11 +228,20 @@ function MessageBubble({ message, onReplay, onQuickReply }) {
                 color={COLORS.primary}
               />
             </TouchableOpacity>
-          ) : null}
+          )}
         </View>
+
+        {/* Tool action chips */}
+        {!isUser && message.toolActions && message.toolActions.length > 0 && (
+          <View style={styles.toolActionsRow}>
+            {message.toolActions.map((ta, idx) => (
+              <ToolActionChip key={`tool-${idx}`} action={ta} />
+            ))}
+          </View>
+        )}
       </View>
 
-      {!isUser ? (
+      {!isUser && (
         <View style={styles.quickRepliesRow}>
           {QUICK_REPLY_CHIPS.map((chip) => (
             <TouchableOpacity
@@ -96,18 +254,24 @@ function MessageBubble({ message, onReplay, onQuickReply }) {
             </TouchableOpacity>
           ))}
         </View>
-      ) : null}
+      )}
     </View>
   );
 }
 
-export default function ARIAScreen({ route }) {
+// ═══════════════════════════════════════════════════════════════════════════════
+// Main Screen
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export default function ARIAScreen({ route, navigation }) {
   const { t: tr } = useLanguage();
+  const { user } = useAuth();
   const listRef = useRef(null);
   const recordingRef = useRef(null);
   const messagesRef = useRef([]);
   const topicSeededRef = useRef(false);
   const audioApiRef = useRef(null);
+  const sessionIdRef = useRef(createId());
 
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
@@ -118,17 +282,31 @@ export default function ARIAScreen({ route }) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speakingMessageId, setSpeakingMessageId] = useState(null);
   const [context, setContext] = useState(normalizeContext(route?.params?.context));
+  const [currentEmotion, setCurrentEmotion] = useState('neutral');
+  const [showMemoryPeek, setShowMemoryPeek] = useState(false);
+  const [userMemories, setUserMemories] = useState([]);
+  const [isThinking, setIsThinking] = useState(false);
 
   const pulseScale = useRef(new Animated.Value(1)).current;
   const waveBarOne = useRef(new Animated.Value(8)).current;
   const waveBarTwo = useRef(new Animated.Value(12)).current;
   const waveBarThree = useRef(new Animated.Value(6)).current;
 
+  // ─── Derived Values ────────────────────────────────────────────────────
+  const userId = user?.id || null;
+  const userName = user?.full_name || '';
+  const userDistrict = user?.district || context.district;
+
+  // ─── Lifecycle & Effects ───────────────────────────────────────────────
   useEffect(() => {
     messagesRef.current = messages;
     requestAnimationFrame(() => {
       listRef.current?.scrollToEnd({ animated: true });
     });
+    // Cache conversations for offline access
+    if (messages.length > 0) {
+      cacheConversation(messages);
+    }
   }, [messages]);
 
   useEffect(() => {
@@ -137,13 +315,38 @@ export default function ARIAScreen({ route }) {
     }
   }, [route?.params?.context]);
 
+  // Restore cached conversation on mount
   useEffect(() => {
-    if (route?.params?.topic !== 'calcium-chloride-storage') {
-      return;
+    (async () => {
+      const cached = await loadCachedConversation();
+      if (cached.length > 0) {
+        setMessages(cached);
+      }
+    })();
+  }, []);
+
+  // Show dialect welcome on first open
+  useEffect(() => {
+    if (messages.length === 0 && !topicSeededRef.current) {
+      topicSeededRef.current = true;
+      const welcomeText = getAriaWelcome(userDistrict, userName, selectedLanguage.code);
+      if (welcomeText) {
+        setMessages([{
+          id: createId(),
+          role: 'assistant',
+          text: welcomeText,
+          languageCode: selectedLanguage.code,
+          emotion: 'neutral',
+          toolActions: [],
+        }]);
+      }
     }
-    if (topicSeededRef.current) {
-      return;
-    }
+  }, []);
+
+  // Topic seeding: calcium-chloride-storage
+  useEffect(() => {
+    if (route?.params?.topic !== 'calcium-chloride-storage') return;
+    if (topicSeededRef.current && messages.length > 1) return;
     topicSeededRef.current = true;
     const languageCode = selectedLanguage.code;
     const guideText =
@@ -155,71 +358,48 @@ export default function ARIAScreen({ route }) {
 
     setMessages((prev) => [
       ...prev,
-      {
-        id: createId(),
-        role: 'assistant',
-        text: guideText,
-        languageCode,
-      },
+      { id: createId(), role: 'assistant', text: guideText, languageCode, emotion: 'neutral', toolActions: [] },
     ]);
     speakText(guideText, languageCode);
   }, [route?.params?.topic, selectedLanguage.code]);
 
+  // ─── Recording pulse animation ─────────────────────────────────────────
   useEffect(() => {
     if (!isRecording) {
       pulseScale.stopAnimation();
       pulseScale.setValue(1);
       return undefined;
     }
-
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseScale, {
-          toValue: 1.35,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseScale, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }),
+        Animated.timing(pulseScale, { toValue: 1.35, duration: 600, useNativeDriver: true }),
+        Animated.timing(pulseScale, { toValue: 1, duration: 600, useNativeDriver: true }),
       ])
     );
     loop.start();
     return () => loop.stop();
   }, [isRecording, pulseScale]);
 
+  // ─── Speaking waveform animation ───────────────────────────────────────
   useEffect(() => {
     const bars = [waveBarOne, waveBarTwo, waveBarThree];
     if (!isSpeaking) {
-      bars.forEach((bar, index) => bar.setValue(index === 1 ? 12 : 8));
+      bars.forEach((bar, i) => bar.setValue(i === 1 ? 12 : 8));
       return undefined;
     }
-
-    const loops = bars.map((bar, index) =>
+    const loops = bars.map((bar, i) =>
       Animated.loop(
         Animated.sequence([
-          Animated.timing(bar, {
-            toValue: 24 - index * 3,
-            duration: 240 + index * 80,
-            useNativeDriver: false,
-          }),
-          Animated.timing(bar, {
-            toValue: 6 + index * 2,
-            duration: 240 + index * 80,
-            useNativeDriver: false,
-          }),
+          Animated.timing(bar, { toValue: 24 - i * 3, duration: 240 + i * 80, useNativeDriver: false }),
+          Animated.timing(bar, { toValue: 6 + i * 2, duration: 240 + i * 80, useNativeDriver: false }),
         ])
       )
     );
-    loops.forEach((loop) => loop.start());
-
-    return () => {
-      loops.forEach((loop) => loop.stop());
-    };
+    loops.forEach((l) => l.start());
+    return () => loops.forEach((l) => l.stop());
   }, [isSpeaking, waveBarOne, waveBarTwo, waveBarThree]);
 
+  // Cleanup
   useEffect(() => {
     return () => {
       Speech.stop();
@@ -229,71 +409,83 @@ export default function ARIAScreen({ route }) {
     };
   }, []);
 
+  // ─── Suggested questions ───────────────────────────────────────────────
   const suggestedQuestions = useMemo(() => createSuggestedQuestions(context), [context]);
 
+  // ─── Audio helper ──────────────────────────────────────────────────────
   const ensureAudioApi = async () => {
-    if (audioApiRef.current) {
-      return audioApiRef.current;
-    }
+    if (audioApiRef.current) return audioApiRef.current;
     try {
       const mod = require('expo-av');
-      if (mod && mod.Audio) {
+      if (mod?.Audio) {
         audioApiRef.current = mod.Audio;
         return audioApiRef.current;
       }
       return null;
-    } catch (e) {
-      console.log('[ARIA] expo-av not available:', e.message);
+    } catch {
       return null;
     }
   };
 
+  // ─── TTS ───────────────────────────────────────────────────────────────
   const stopSpeech = () => {
     Speech.stop();
     setIsSpeaking(false);
     setSpeakingMessageId(null);
   };
 
-  const speakText = (text, languageCode, messageId = null) => {
+  const speakText = useCallback((text, languageCode, messageId = null) => {
     const language = getLanguageByCode(languageCode);
     stopSpeech();
     setIsSpeaking(true);
     setSpeakingMessageId(messageId);
-
     Speech.speak(text, {
       language: language.speechCode,
       rate: 0.95,
       pitch: 1.0,
-      onDone: () => {
-        setIsSpeaking(false);
-        setSpeakingMessageId(null);
-      },
-      onStopped: () => {
-        setIsSpeaking(false);
-        setSpeakingMessageId(null);
-      },
-      onError: () => {
-        setIsSpeaking(false);
-        setSpeakingMessageId(null);
-      },
+      onDone: () => { setIsSpeaking(false); setSpeakingMessageId(null); },
+      onStopped: () => { setIsSpeaking(false); setSpeakingMessageId(null); },
+      onError: () => { setIsSpeaking(false); setSpeakingMessageId(null); },
     });
-  };
+  }, []);
 
-  const appendAssistantMessage = (text, languageCode) => {
+  // ─── Message helpers ───────────────────────────────────────────────────
+  const appendAssistantMessage = (text, languageCode, extra = {}) => {
     const message = {
       id: createId(),
       role: 'assistant',
       text,
       languageCode,
+      emotion: extra.emotion || currentEmotion,
+      toolActions: extra.toolActions || [],
     };
     setMessages((prev) => [...prev, message]);
     speakText(text, languageCode, message.id);
   };
 
+  // ─── Send User Message (core chat flow) ────────────────────────────────
   const sendUserMessage = async (messageText) => {
     const text = String(messageText || '').trim();
-    if (!text || isSending) {
-      return;
+    if (!text || isSending) return;
+
+    // Check for memory peek request
+    const isMemoryRequest = text.toLowerCase().includes('yaad') ||
+      text.toLowerCase().includes('remember') ||
+      text.toLowerCase().includes('memory') ||
+      text.includes('आठवत');
+
+    if (isMemoryRequest && userId) {
+      const mems = await fetchMemories(userId);
+      if (mems.length > 0) {
+        setUserMemories(mems);
+        setShowMemoryPeek(true);
+      }
+    }
+
+    // Detect emotion client-side (fast path)
+    const detectedEmotion = detectEmotion(text);
+    if (detectedEmotion) {
+      setCurrentEmotion(detectedEmotion);
     }
 
     const userMessage = {
@@ -301,59 +493,86 @@ export default function ARIAScreen({ route }) {
       role: 'user',
       text,
       languageCode: selectedLanguage.code,
+      emotion: detectedEmotion,
+      toolActions: [],
     };
 
     const pendingMessages = [...messagesRef.current, userMessage];
     setMessages(pendingMessages);
     setInputText('');
     setIsSending(true);
+    setIsThinking(true);
 
     try {
-      const reply = await fetchAriaReply({
+      const result = await fetchAriaReply({
         uiMessages: pendingMessages,
         context,
         languageCode: selectedLanguage.code,
+        userId,
+        sessionId: sessionIdRef.current,
       });
-      appendAssistantMessage(reply, selectedLanguage.code);
+
+      // Update emotion from agent response
+      if (result.emotion) {
+        setCurrentEmotion(result.emotion);
+      }
+
+      // Handle navigation intent
+      if (result.navigateTo && navigation) {
+        setTimeout(() => {
+          navigation.navigate(result.navigateTo);
+        }, 1500);
+      }
+
+      appendAssistantMessage(result.reply, selectedLanguage.code, {
+        emotion: result.emotion || currentEmotion,
+        toolActions: result.toolActions || [],
+      });
     } catch (err) {
       console.warn('[AriaScreen] fetchAriaReply failed:', err?.message || err);
-      appendAssistantMessage(
-        getAriaFallbackReply(selectedLanguage.code),
-        selectedLanguage.code
-      );
+      // If farmer is distressed, use encouragement as fallback
+      const fallbackText = detectedEmotion === 'worried' || detectedEmotion === 'frustrated'
+        ? getEncouragement(userDistrict, selectedLanguage.code)
+        : getAriaFallbackReply(selectedLanguage.code);
+      appendAssistantMessage(fallbackText, selectedLanguage.code);
     } finally {
       setIsSending(false);
+      setIsThinking(false);
     }
   };
 
-  const startRecording = async () => {
-    if (isRecording || isTranscribing || isSending) {
-      return;
-    }
+  // ─── Daily Briefing ────────────────────────────────────────────────────
+  const requestDailyBriefing = () => {
+    const briefingPrompt =
+      selectedLanguage.code === 'mr'
+        ? `आजचं ब्रीफिंग दे — ${context.crop} भाव, हवामान, आणि काही important अपडेट्स`
+        : selectedLanguage.code === 'en'
+          ? `Give me today's briefing — ${context.crop} prices, weather, and any important updates`
+          : `Aaj ka briefing de — ${context.crop} bhav, mausam, aur koi important updates`;
+    sendUserMessage(briefingPrompt);
+  };
+
+  // ─── Recording ─────────────────────────────────────────────────────────
+  const startRecordingFn = async () => {
+    if (isRecording || isTranscribing || isSending) return;
     try {
       const AudioApi = await ensureAudioApi();
       if (!AudioApi) {
         appendAssistantMessage(
-          'Voice input abhi available nahi hai is runtime mein. Type karke pucho. Aaj hi becho.',
+          'Voice input abhi available nahi hai. Type karke pucho.',
           selectedLanguage.code
         );
         return;
       }
-
       const permission = await AudioApi.requestPermissionsAsync();
       if (permission.status !== 'granted') {
         appendAssistantMessage(
-          'Mic permission chalu karo, tab main awaaz se sun paungi. Aaj hi becho.',
+          'Mic permission chalu karo, tab awaaz se sun paungi.',
           selectedLanguage.code
         );
         return;
       }
-
-      await AudioApi.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
+      await AudioApi.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
       const { recording } = await AudioApi.Recording.createAsync(
         AudioApi.RecordingOptionsPresets.HIGH_QUALITY
       );
@@ -361,55 +580,43 @@ export default function ARIAScreen({ route }) {
       setIsRecording(true);
     } catch {
       appendAssistantMessage(
-        'Recording start nahi ho payi. Type karke pucho. Kal tak ruko.',
+        'Recording start nahi ho payi. Type karke pucho.',
         selectedLanguage.code
       );
     }
   };
 
-  const stopRecording = async () => {
-    if (!recordingRef.current || !isRecording) {
-      return;
-    }
+  const stopRecordingFn = async () => {
+    if (!recordingRef.current || !isRecording) return;
     setIsRecording(false);
     setIsTranscribing(true);
-
     try {
       const AudioApi = await ensureAudioApi();
       const recording = recordingRef.current;
       recordingRef.current = null;
       await recording.stopAndUnloadAsync();
       if (AudioApi?.setAudioModeAsync) {
-        await AudioApi.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          playsInSilentModeIOS: true,
-        });
+        await AudioApi.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true });
       }
-
       const uri = recording.getURI();
-      if (!uri) {
-        throw new Error('Recording URI missing.');
-      }
-
+      if (!uri) throw new Error('Recording URI missing');
       const transcript = await transcribeWithWhisper({
         audioUri: uri,
         languageCode: selectedLanguage.code,
       });
-
       if (!transcript) {
         appendAssistantMessage(
-          'Awaaz clear nahi mili. Ek baar phir bolo. Kal tak ruko.',
+          'Awaaz clear nahi mili. Ek baar phir bolo.',
           selectedLanguage.code
         );
         return;
       }
-
       setInputText(transcript);
-      await new Promise((resolve) => setTimeout(resolve, 180));
+      await new Promise((r) => setTimeout(r, 180));
       await sendUserMessage(transcript);
     } catch {
       appendAssistantMessage(
-        'Voice samajhne mein issue aaya. Type karke pucho. Aaj hi becho.',
+        'Voice samajhne mein issue aaya. Type karke pucho.',
         selectedLanguage.code
       );
     } finally {
@@ -421,9 +628,14 @@ export default function ARIAScreen({ route }) {
     speakText(message.text, message.languageCode || selectedLanguage.code, message.id);
   };
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Render
+  // ═══════════════════════════════════════════════════════════════════════════
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      {isSpeaking ? (
+      {/* Speaking overlay */}
+      {isSpeaking && (
         <Pressable style={styles.speakingOverlay} onPress={stopSpeech}>
           <View style={styles.waveContainer}>
             <Animated.View style={[styles.waveBar, { height: waveBarOne }]} />
@@ -432,47 +644,85 @@ export default function ARIAScreen({ route }) {
           </View>
           <Text style={styles.speakingHint}>{tr('aria.speakingOverlay')}</Text>
         </Pressable>
-      ) : null}
+      )}
 
+      {/* Memory peek card */}
+      {showMemoryPeek && (
+        <MemoryPeekCard
+          memories={userMemories}
+          onDismiss={() => setShowMemoryPeek(false)}
+        />
+      )}
+
+      {/* Header with avatar + language pills */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>{'\u{1F33E} ARIA'}</Text>
-          <Text style={styles.headerSubtitle}>{tr('aria.subtitle')}</Text>
+        <View style={styles.headerLeft}>
+          <EmotionalAvatar emotion={currentEmotion} isThinking={isThinking} />
+          <View>
+            <Text style={styles.headerTitle}>ARIA</Text>
+            <Text style={styles.headerSubtitle}>{tr('aria.subtitle')}</Text>
+          </View>
         </View>
-        <View style={styles.languagePills}>
-          {LANGUAGE_OPTIONS.map((option) => (
-            <TouchableOpacity
-              key={option.code}
-              style={[
-                styles.languagePill,
-                selectedLanguage.code === option.code
-                  ? styles.languagePillActive
-                  : null,
-              ]}
-              onPress={() => setSelectedLanguage(option)}
-            >
-              <Text
+        <View style={styles.headerRight}>
+          {/* Daily Briefing button */}
+          <TouchableOpacity
+            style={styles.briefingButton}
+            onPress={requestDailyBriefing}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="newspaper-variant-outline" size={18} color={COLORS.onPrimary} />
+          </TouchableOpacity>
+          {/* Language pills */}
+          <View style={styles.languagePills}>
+            {LANGUAGE_OPTIONS.map((option) => (
+              <TouchableOpacity
+                key={option.code}
                 style={[
-                  styles.languagePillText,
-                  selectedLanguage.code === option.code
-                    ? styles.languagePillTextActive
-                    : null,
+                  styles.languagePill,
+                  selectedLanguage.code === option.code && styles.languagePillActive,
                 ]}
+                onPress={() => setSelectedLanguage(option)}
               >
-                {option.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <Text
+                  style={[
+                    styles.languagePillText,
+                    selectedLanguage.code === option.code && styles.languagePillTextActive,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       </View>
 
+      {/* Thinking indicator bar */}
+      {isThinking && (
+        <View style={styles.thinkingBar}>
+          <ActivityIndicator size="small" color={COLORS.primary} />
+          <Text style={styles.thinkingText}>
+            {selectedLanguage.code === 'mr' ? 'विचार करतेय...' :
+             selectedLanguage.code === 'en' ? 'Thinking...' :
+             'Soch rahi hoon...'}
+          </Text>
+        </View>
+      )}
+
+      {/* Chat area */}
       <KeyboardAvoidingView
         style={styles.chatWrapper}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         {messages.length === 0 ? (
           <View style={styles.emptyState}>
+            <MaterialCommunityIcons name="robot-happy-outline" size={48} color={COLORS.primary} />
             <Text style={styles.emptyTitle}>{tr('aria.emptyTitle')}</Text>
+            <Text style={styles.emptySubtitle}>
+              {selectedLanguage.code === 'mr' ? 'तुमच्या शेतीचे प्रश्न विचारा' :
+               selectedLanguage.code === 'en' ? 'Ask me about your crops, weather & prices' :
+               'Apni kheti ke baare mein kuch bhi pucho'}
+            </Text>
             {suggestedQuestions.map((question) => (
               <TouchableOpacity
                 key={question}
@@ -493,6 +743,7 @@ export default function ARIAScreen({ route }) {
                 message={item}
                 onReplay={onReplayMessage}
                 onQuickReply={sendUserMessage}
+                currentEmotion={currentEmotion}
               />
             )}
             contentContainerStyle={styles.listContent}
@@ -500,45 +751,49 @@ export default function ARIAScreen({ route }) {
           />
         )}
 
+        {/* Input bar */}
         <View style={styles.inputBar}>
           <TextInput
             style={styles.input}
             value={inputText}
             onChangeText={setInputText}
             placeholder={tr('aria.inputPlaceholder')}
-            placeholderTextColor="#7B8A95"
+            placeholderTextColor={COLORS.outline}
             multiline
             onSubmitEditing={() => sendUserMessage(inputText)}
           />
 
           <TouchableOpacity
-            style={styles.sendButton}
+            style={[styles.sendButton, (!inputText.trim() || isSending) && styles.sendButtonDisabled]}
             onPress={() => sendUserMessage(inputText)}
             activeOpacity={0.9}
+            disabled={!inputText.trim() || isSending}
           >
-            <MaterialCommunityIcons name="send" size={18} color="#FFFFFF" />
+            <MaterialCommunityIcons name="send" size={18} color={COLORS.onPrimary} />
           </TouchableOpacity>
 
           <Pressable
             style={styles.micButtonWrap}
-            onPressIn={startRecording}
-            onPressOut={stopRecording}
+            onPressIn={startRecordingFn}
+            onPressOut={stopRecordingFn}
           >
-            {isRecording ? (
+            {isRecording && (
               <Animated.View
                 style={[
                   styles.recordingPulse,
-                  {
-                    transform: [{ scale: pulseScale }],
-                  },
+                  { transform: [{ scale: pulseScale }] },
                 ]}
               />
-            ) : null}
+            )}
             <View style={styles.micButton}>
               {isTranscribing || isSending ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
+                <ActivityIndicator color={COLORS.onPrimary} size="small" />
               ) : (
-                <Text style={styles.micIcon}>{'\u{1F3A4}'}</Text>
+                <MaterialCommunityIcons
+                  name={isRecording ? 'microphone' : 'microphone-outline'}
+                  size={22}
+                  color={COLORS.onPrimary}
+                />
               )}
             </View>
           </Pressable>
@@ -548,22 +803,25 @@ export default function ARIAScreen({ route }) {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// Styles
+// ═══════════════════════════════════════════════════════════════════════════════
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#EEF4EF',
+    backgroundColor: COLORS.background,
   },
+
+  // ── Speaking Overlay ───────────────────────────────────────────────────
   speakingOverlay: {
     position: 'absolute',
     zIndex: 20,
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(12, 32, 24, 0.18)',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: COLORS.backdrop,
     alignItems: 'center',
     justifyContent: 'center',
-    rowGap: 14,
+    rowGap: SPACING.md,
   },
   waveContainer: {
     flexDirection: 'row',
@@ -573,112 +831,234 @@ const styles = StyleSheet.create({
   },
   waveBar: {
     width: 8,
-    borderRadius: 99,
-    backgroundColor: '#1F8F58',
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.primary,
   },
   speakingHint: {
-    color: '#FFFFFF',
-    fontSize: 13,
+    ...TYPOGRAPHY.labelMedium,
+    color: COLORS.onPrimary,
     fontWeight: '700',
   },
+
+  // ── Avatar ─────────────────────────────────────────────────────────────
+  avatarContainer: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.xs,
+  },
+  avatarGlow: {
+    position: 'absolute',
+    width: 36,
+    height: 36,
+    borderRadius: RADIUS.full,
+  },
+  avatarCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: RADIUS.full,
+    borderWidth: 2,
+    backgroundColor: COLORS.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // ── Header ─────────────────────────────────────────────────────────────
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
-    backgroundColor: '#1A5A3F',
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.sm,
+    backgroundColor: COLORS.primary,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    columnGap: SPACING.sm,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    columnGap: SPACING.sm,
   },
   headerTitle: {
-    color: '#FFFFFF',
-    fontSize: 24,
+    ...TYPOGRAPHY.headlineSmall,
+    color: COLORS.onPrimary,
     fontWeight: '800',
   },
   headerSubtitle: {
-    color: '#D7F0E3',
-    fontSize: 13,
-    marginTop: 2,
-    fontWeight: '600',
+    ...TYPOGRAPHY.labelSmall,
+    color: 'rgba(255,255,255,0.75)',
+    marginTop: 1,
+  },
+  briefingButton: {
+    width: 34,
+    height: 34,
+    borderRadius: RADIUS.full,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   languagePills: {
     flexDirection: 'row',
-    columnGap: 6,
+    columnGap: 4,
   },
   languagePill: {
     borderWidth: 1,
-    borderColor: '#6AA686',
-    borderRadius: 99,
-    paddingVertical: 5,
-    paddingHorizontal: 8,
+    borderColor: 'rgba(255,255,255,0.3)',
+    borderRadius: RADIUS.full,
+    paddingVertical: 4,
+    paddingHorizontal: SPACING.sm,
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
   languagePillActive: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#FFFFFF',
+    backgroundColor: COLORS.onPrimary,
+    borderColor: COLORS.onPrimary,
   },
   languagePillText: {
-    color: '#E7F6EE',
-    fontSize: 12,
+    ...TYPOGRAPHY.labelSmall,
+    color: 'rgba(255,255,255,0.85)',
     fontWeight: '700',
   },
   languagePillTextActive: {
-    color: '#1A5A3F',
+    color: COLORS.primary,
   },
+
+  // ── Thinking Bar ───────────────────────────────────────────────────────
+  thinkingBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.xs,
+    backgroundColor: COLORS.primaryContainer,
+    columnGap: SPACING.sm,
+  },
+  thinkingText: {
+    ...TYPOGRAPHY.labelMedium,
+    color: COLORS.onPrimaryContainer,
+    fontWeight: '600',
+  },
+
+  // ── Memory Peek ────────────────────────────────────────────────────────
+  memoryCard: {
+    position: 'absolute',
+    zIndex: 15,
+    top: 90,
+    left: SPACING.md,
+    right: SPACING.md,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    ...ELEVATION.level3,
+    rowGap: SPACING.xs,
+  },
+  memoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.xs,
+  },
+  memoryTitle: {
+    ...TYPOGRAPHY.titleSmall,
+    color: COLORS.primary,
+    flex: 1,
+    marginLeft: SPACING.sm,
+  },
+  memoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    columnGap: SPACING.xs,
+    paddingVertical: 2,
+  },
+  memoryKey: {
+    ...TYPOGRAPHY.labelSmall,
+    color: COLORS.onSurfaceVariant,
+    fontWeight: '600',
+  },
+  memoryValue: {
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.onSurface,
+    flex: 1,
+  },
+
+  // ── Tool Action Chips ──────────────────────────────────────────────────
+  toolActionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginTop: SPACING.xs,
+  },
+  toolChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    columnGap: 3,
+    backgroundColor: COLORS.secondaryContainer,
+    borderRadius: RADIUS.full,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+  },
+  toolChipText: {
+    ...TYPOGRAPHY.labelSmall,
+    fontSize: 10,
+    color: COLORS.onSecondaryContainer,
+  },
+
+  // ── Chat ───────────────────────────────────────────────────────────────
   chatWrapper: {
     flex: 1,
   },
   listContent: {
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 8,
-    rowGap: 8,
+    paddingHorizontal: SPACING.sm,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.sm,
+    rowGap: SPACING.sm,
   },
   messageRow: {
-    marginBottom: 8,
-  },
-  userRow: {
-    alignItems: 'flex-end',
-  },
-  assistantRow: {
+    marginBottom: SPACING.sm,
+    flexDirection: 'row',
     alignItems: 'flex-start',
   },
+  userRow: {
+    justifyContent: 'flex-end',
+  },
+  assistantRow: {
+    justifyContent: 'flex-start',
+  },
   messageBubble: {
-    maxWidth: '86%',
-    borderRadius: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    maxWidth: '80%',
+    borderRadius: RADIUS.lg,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
   },
   userBubble: {
-    backgroundColor: '#2E7D32',
-    borderTopRightRadius: 4,
+    backgroundColor: COLORS.primary,
+    borderTopRightRadius: RADIUS.xs,
   },
   assistantBubble: {
-    backgroundColor: '#FFFFFF',
-    borderLeftWidth: 4,
-    borderLeftColor: '#2E7D32',
-    borderTopLeftRadius: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
+    backgroundColor: COLORS.surface,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.primary,
+    borderTopLeftRadius: RADIUS.xs,
+    ...ELEVATION.level1,
   },
   assistantMessageHead: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    columnGap: 8,
+    columnGap: SPACING.sm,
   },
   messageText: {
     flex: 1,
-    fontSize: 14,
+    ...TYPOGRAPHY.bodyMedium,
     lineHeight: 21,
   },
   userText: {
-    color: '#FFFFFF',
+    color: COLORS.onPrimary,
   },
   assistantText: {
-    color: '#1F2C35',
+    color: COLORS.onSurface,
   },
   replayButton: {
     marginTop: 1,
@@ -686,78 +1066,96 @@ const styles = StyleSheet.create({
   },
   quickRepliesRow: {
     marginTop: 6,
+    marginLeft: 40,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    columnGap: 6,
-    rowGap: 6,
-    maxWidth: '95%',
+    gap: 6,
+    maxWidth: '90%',
   },
   quickReplyChip: {
     borderWidth: 1,
-    borderColor: '#CDE4D6',
-    backgroundColor: '#F4FBF6',
-    borderRadius: 99,
+    borderColor: COLORS.outlineVariant,
+    backgroundColor: COLORS.surfaceVariant,
+    borderRadius: RADIUS.full,
     paddingVertical: 6,
-    paddingHorizontal: 10,
+    paddingHorizontal: SPACING.sm,
   },
   quickReplyText: {
-    color: '#1D5C41',
-    fontSize: 12,
+    ...TYPOGRAPHY.labelSmall,
+    color: COLORS.primary,
     fontWeight: '600',
   },
+
+  // ── Empty State ────────────────────────────────────────────────────────
   emptyState: {
-    paddingHorizontal: 14,
-    paddingTop: 18,
-    rowGap: 10,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: SPACING.lg,
+    rowGap: SPACING.sm,
   },
   emptyTitle: {
-    color: '#325244',
-    fontSize: 15,
+    ...TYPOGRAPHY.titleMedium,
+    color: COLORS.onSurface,
     fontWeight: '700',
+    marginTop: SPACING.sm,
+  },
+  emptySubtitle: {
+    ...TYPOGRAPHY.bodyMedium,
+    color: COLORS.onSurfaceVariant,
+    textAlign: 'center',
+    marginBottom: SPACING.sm,
   },
   suggestedChip: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#CDE0D4',
+    width: '100%',
+    backgroundColor: COLORS.surface,
+    borderColor: COLORS.outlineVariant,
     borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    borderRadius: RADIUS.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
+    ...ELEVATION.level0,
   },
   suggestedChipText: {
-    color: '#2C3E48',
-    fontSize: 14,
+    ...TYPOGRAPHY.bodyMedium,
+    color: COLORS.onSurface,
     fontWeight: '600',
   },
+
+  // ── Input Bar ──────────────────────────────────────────────────────────
   inputBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    columnGap: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+    columnGap: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
     borderTopWidth: 1,
-    borderTopColor: '#D7E2DB',
-    backgroundColor: '#FFFFFF',
+    borderTopColor: COLORS.outlineVariant,
+    backgroundColor: COLORS.surface,
   },
   input: {
     flex: 1,
     minHeight: 46,
     maxHeight: 120,
     borderWidth: 1,
-    borderColor: '#D2DEE5',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: '#1F2F3A',
-    fontSize: 14,
-    backgroundColor: '#FAFCFD',
+    borderColor: COLORS.outlineVariant,
+    borderRadius: RADIUS.lg,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
+    color: COLORS.onSurface,
+    ...TYPOGRAPHY.bodyMedium,
+    backgroundColor: COLORS.surfaceVariant,
   },
   sendButton: {
     width: 40,
     height: 40,
-    borderRadius: 999,
+    borderRadius: RADIUS.full,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2E7D32',
+    backgroundColor: COLORS.primary,
+  },
+  sendButtonDisabled: {
+    opacity: 0.5,
   },
   micButtonWrap: {
     width: 48,
@@ -769,19 +1167,15 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 48,
     height: 48,
-    borderRadius: 999,
-    backgroundColor: 'rgba(41, 155, 93, 0.25)',
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.primary + '30',
   },
   micButton: {
     width: 42,
     height: 42,
-    borderRadius: 999,
+    borderRadius: RADIUS.full,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.primary,
-  },
-  micIcon: {
-    color: '#FFFFFF',
-    fontSize: 21,
   },
 });

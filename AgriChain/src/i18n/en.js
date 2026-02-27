@@ -422,4 +422,119 @@ export default {
     weather: 'Weather',
     editProfile: 'Edit Profile',
   },
+
+  /* ── F1: Digital Twin ────────────────────────────────────────── */
+  digitalTwin: {
+    title: 'Crop Digital Twin',
+    createSim: 'Create Simulation',
+    whatIf: 'What-if Scenario',
+    healthScore: 'Health Score',
+    stage: 'Growth Stage',
+    growthDay: 'Growth Day',
+    yieldEstimate: 'Yield Estimate',
+  },
+
+  /* ── F3: Photo Diagnostic ────────────────────────────────────── */
+  photoDiagnostic: {
+    title: 'Photo Diagnostic',
+    uploadPhotos: 'Upload Crop Photos',
+    analyzeAI: 'Analyze with AI',
+    diseaseDetected: 'Disease Detected',
+    confidence: 'Confidence',
+    severity: 'Severity',
+    treatments: 'Treatment Options',
+    nearestKVK: 'Nearest KVK',
+    newDiagnosis: 'New Diagnosis',
+  },
+
+  /* ── F5: Negotiation Simulator ───────────────────────────────── */
+  simulator: {
+    title: 'Negotiation Simulator',
+    startGame: 'Start Negotiation',
+    yourOffer: 'Your Price',
+    buyerOffer: 'Buyer Offer',
+    dealDone: 'Deal Done!',
+    walkedAway: 'Buyer Walked Away',
+    playAgain: 'Play Again',
+    score: 'Your Score',
+  },
+
+  /* ── F4: Harvest Lessons ─────────────────────────────────────── */
+  harvestLessons: {
+    title: 'Harvest Lessons',
+    potentialLoss: 'Potential Loss',
+    optimalDate: 'Optimal Date',
+    lesson: 'Learning',
+  },
+
+  /* ── F8: Leaderboard ─────────────────────────────────────────── */
+  leaderboard: {
+    title: 'Village Champions',
+    myScore: 'My Score',
+    ranking: 'Full Rankings',
+    badges: 'Badge Levels',
+    howToImprove: 'How to Improve',
+    districtRank: 'District Rank',
+  },
+
+  /* ── F9: Crop Diary ──────────────────────────────────────────── */
+  cropDiary: {
+    title: 'Crop Diary',
+    newEntry: 'New Entry',
+    editEntry: 'Edit Entry',
+    entries: 'Entries',
+    summary: 'Summary',
+    topTags: 'Top Tags',
+    patterns: 'Patterns & Insights',
+    whatHappened: 'What happened today?',
+  },
+
+  /* ── F10: Credit Score ───────────────────────────────────────── */
+  creditScore: {
+    title: 'Krishi Credit Score',
+    totalScore: 'Total Score',
+    yieldAccuracy: 'Yield Accuracy',
+    priceAchievement: 'Price Achievement',
+    appContribution: 'App Contribution',
+    improvementTips: 'Improvement Tips',
+  },
+
+  /* ── F11: Marketplace ────────────────────────────────────────── */
+  marketplace: {
+    title: 'Input Marketplace',
+    products: 'Products',
+    shops: 'Shops',
+    aiSuggest: 'AI Suggest',
+    searchProducts: 'Search products...',
+    getRecommendations: 'Get Recommendations',
+  },
+
+  /* ── F12: Policy Risk ────────────────────────────────────────── */
+  policyRisk: {
+    title: 'Policy Risk Alerts',
+    msp: 'MSP Information',
+    policyEvents: 'Policy Events',
+    riskAssessment: 'Risk Assessment',
+  },
+
+  /* ── F13: Buyer Connect ──────────────────────────────────────── */
+  buyerConnect: {
+    title: 'Buyer Connect',
+    buyerOrders: 'Buyer Orders',
+    myInterest: 'My Interest',
+    expressInterest: 'Express Interest',
+    quantityOffered: 'Quantity Offered',
+  },
+
+  /* ── F17: Cold Storage ───────────────────────────────────────── */
+  coldStorage: {
+    title: 'Cold Storage Monitor',
+    devices: 'Devices',
+    temperature: 'Temperature',
+    humidity: 'Humidity',
+    normal: 'Normal',
+    alert: 'Alert',
+    safeRanges: 'Safe Storage Ranges',
+    history: 'Reading History',
+  },
 };

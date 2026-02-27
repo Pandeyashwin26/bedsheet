@@ -63,5 +63,10 @@ def init_db() -> None:
     from db.models import (
         MandiPrice, WeatherRecord, SoilProfile,
         NDVIRecord, CropMeta, TransportRoute, PredictionLog,
+        AriaMemory, AriaConversation,
+        CropSimulation, HarvestCycle, CrowdOutcome,
+        ChampionScore, CropDiaryEntry, KrishiScore,
+        InputProduct, LocalShop, BuyerOrder, FarmerExpression,
+        StorageReading,
     )
     Base.metadata.create_all(bind=engine)

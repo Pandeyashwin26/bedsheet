@@ -651,3 +651,334 @@ export const getDataStatus = async () => {
     return null;
   }
 };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// F1-F17 NEW FEATURE API FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * [F1] Digital Twin — Create a crop simulation
+ */
+export const createDigitalTwin = async (payload) => {
+  try {
+    const resp = await apiClient.post('/digital-twin/create', payload);
+    return resp?.data;
+  } catch (e) {
+    if (__DEV__) console.warn('createDigitalTwin failed:', e.message);
+    return null;
+  }
+};
+
+/**
+ * [F1] Digital Twin — Get user's simulations
+ */
+export const getDigitalTwins = async (userId) => {
+  try {
+    const resp = await apiClient.get(`/digital-twin/${userId}`);
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F1] Digital Twin — Run what-if scenario
+ */
+export const runWhatIf = async (simulationId, payload) => {
+  try {
+    const resp = await apiClient.post(`/digital-twin/${simulationId}/whatif`, payload);
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F3] Photo Diagnostic — Submit photos for AI analysis
+ */
+export const photoDiagnose = async (payload) => {
+  try {
+    const resp = await apiClient.post('/api/disease/photo-diagnostic', payload, { timeout: 30000 });
+    return resp?.data;
+  } catch (e) {
+    if (__DEV__) console.warn('photoDiagnose failed:', e.message);
+    return null;
+  }
+};
+
+/**
+ * [F4] Harvest Cycles — Log a harvest cycle
+ */
+export const logHarvestCycle = async (payload) => {
+  try {
+    const resp = await apiClient.post('/harvest-cycles/log', payload);
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F4] Harvest Cycles — Get loss lessons
+ */
+export const getHarvestLessons = async (userId) => {
+  try {
+    const resp = await apiClient.get(`/harvest-cycles/lessons/${userId}`);
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F5] Negotiation Simulator — Start session
+ */
+export const startNegotiation = async (payload) => {
+  try {
+    const resp = await apiClient.post('/simulator/start', payload);
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F5] Negotiation Simulator — Submit offer
+ */
+export const negotiateOffer = async (payload) => {
+  try {
+    const resp = await apiClient.post('/simulator/negotiate', payload);
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F6] Community — Submit crop outcome
+ */
+export const submitCrowdOutcome = async (payload) => {
+  try {
+    const resp = await apiClient.post('/community/submit-outcome', payload);
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F6] Community — Get crowd insights
+ */
+export const getCrowdInsights = async (district, crop) => {
+  try {
+    const resp = await apiClient.get(`/community/insights/${district}/${crop}`);
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F8] Champions — Get leaderboard
+ */
+export const getLeaderboard = async (district) => {
+  try {
+    const resp = await apiClient.get(`/champions/leaderboard/${district}`);
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F8] Champions — Get my score
+ */
+export const getMyChampionScore = async (userId) => {
+  try {
+    const resp = await apiClient.get(`/champions/my-score/${userId}`);
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F9] Crop Diary — Create entry
+ */
+export const createDiaryEntry = async (payload) => {
+  try {
+    const resp = await apiClient.post('/diary/create', payload);
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F9] Crop Diary — Get entries
+ */
+export const getDiaryEntries = async (userId, params = {}) => {
+  try {
+    const resp = await apiClient.get(`/diary/entries/${userId}`, { params });
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F9] Crop Diary — Get diary summary
+ */
+export const getDiarySummary = async (userId) => {
+  try {
+    const resp = await apiClient.get(`/diary/summary/${userId}`);
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F10] Credit Score — Get farmer's Krishi score
+ */
+export const getKrishiScore = async (userId) => {
+  try {
+    const resp = await apiClient.get(`/farmer/credit-score/${userId}`);
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F11] Marketplace — Get products
+ */
+export const getMarketplaceProducts = async (category = null) => {
+  try {
+    const url = category ? `/marketplace/products?category=${category}` : '/marketplace/products';
+    const resp = await apiClient.get(url);
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F11] Marketplace — Get AI recommendations
+ */
+export const getProductRecommendations = async (payload) => {
+  try {
+    const resp = await apiClient.post('/marketplace/recommend', payload);
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F11] Marketplace — Get local shops
+ */
+export const getLocalShops = async (district) => {
+  try {
+    const resp = await apiClient.get(`/marketplace/shops/${district}`);
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F12] Policy Risk — Get risk assessment for a commodity
+ */
+export const getPolicyRisk = async (commodity) => {
+  try {
+    const resp = await apiClient.get(`/market/policy-risk/${commodity}`);
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F12] Policy Risk — Get policy alerts
+ */
+export const getPolicyAlerts = async () => {
+  try {
+    const resp = await apiClient.get('/market/policy-alerts');
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F13] B2B — Get buyer orders
+ */
+export const getBuyerOrders = async (params = {}) => {
+  try {
+    const resp = await apiClient.get('/b2b/orders', { params });
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F13] B2B — Express interest in an order
+ */
+export const expressInterest = async (payload) => {
+  try {
+    const resp = await apiClient.post('/b2b/express-interest', payload);
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F13] B2B — Get my expressions
+ */
+export const getMyExpressions = async (userId) => {
+  try {
+    const resp = await apiClient.get(`/b2b/my-expressions/${userId}`);
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F17] IoT — Get storage devices
+ */
+export const getIoTDevices = async (userId) => {
+  try {
+    const resp = await apiClient.get(`/iot/devices/${userId}`);
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F17] IoT — Get storage history
+ */
+export const getStorageHistory = async (userId, deviceId) => {
+  try {
+    const resp = await apiClient.get(`/iot/storage-history/${userId}/${deviceId}`);
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};
+
+/**
+ * [F17] IoT — Submit storage reading
+ */
+export const submitStorageReading = async (payload) => {
+  try {
+    const resp = await apiClient.post('/iot/storage-reading', payload);
+    return resp?.data;
+  } catch (e) {
+    return null;
+  }
+};

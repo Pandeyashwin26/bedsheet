@@ -9,7 +9,7 @@ import {
   getHarvestRecommendation,
   getMandiRecommendation,
 } from '../services/apiService';
-import { COLORS } from '../theme/colors';
+import { COLORS, ELEVATION, RADIUS, SPACING, TYPOGRAPHY } from '../theme/colors';
 import { useLanguage } from '../context/LanguageContext';
 
 const defaultFormData = {
@@ -205,6 +205,7 @@ export default function RecommendationScreen({ navigation, route }) {
       >
         {offlineBanner ? (
           <View style={styles.offlineBanner}>
+            <MaterialCommunityIcons name="wifi-off" size={16} color={COLORS.warning} />
             <Text style={styles.offlineBannerText}>{offlineBanner}</Text>
           </View>
         ) : null}
@@ -236,7 +237,7 @@ export default function RecommendationScreen({ navigation, route }) {
           <Card style={styles.card}>
             <View style={[styles.cardHeader, styles.marketHeader]}>
               <Text style={styles.cardHeaderText}>
-                {`\u{1F3EA} ${t('recommendation.sellAt')} ${mandiData?.best_mandi || t('recommendation.bestMandi')}`}
+                {`${t('recommendation.sellAt')} ${mandiData?.best_mandi || t('recommendation.bestMandi')}`}
               </Text>
             </View>
             <Card.Content style={styles.cardBody}>
@@ -275,7 +276,7 @@ export default function RecommendationScreen({ navigation, route }) {
             <MaterialCommunityIcons
               name={expanded ? 'chevron-up' : 'chevron-down'}
               size={24}
-              color={COLORS.text}
+              color={COLORS.onSurface}
             />
           </TouchableOpacity>
           {expanded ? (
@@ -314,7 +315,8 @@ export default function RecommendationScreen({ navigation, route }) {
         activeOpacity={0.9}
         onPress={openAriaAssistant}
       >
-        <Text style={styles.ariaFabText}>{'\u{1F3A4} ARIA'}</Text>
+        <MaterialCommunityIcons name="microphone" size={18} color={COLORS.onPrimary} />
+        <Text style={styles.ariaFabText}>ARIA</Text>
       </TouchableOpacity>
     </View>
   );
@@ -326,193 +328,194 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   header: {
-    backgroundColor: COLORS.card,
+    backgroundColor: COLORS.surface,
     elevation: 0,
     borderBottomWidth: 1,
-    borderBottomColor: '#E6E9EC',
+    borderBottomColor: COLORS.outlineVariant,
   },
   headerTitle: {
-    color: COLORS.text,
+    ...TYPOGRAPHY.titleMedium,
+    color: COLORS.onSurface,
     fontWeight: '700',
   },
   scrollArea: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 36,
-    rowGap: 14,
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.xxl,
+    rowGap: SPACING.sm,
   },
   offlineBanner: {
-    backgroundColor: '#FFF1CC',
-    borderColor: '#F0CF72',
+    flexDirection: 'row',
+    alignItems: 'center',
+    columnGap: SPACING.sm,
+    backgroundColor: COLORS.warningContainer,
+    borderColor: COLORS.warning + '40',
     borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    borderRadius: RADIUS.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
   },
   offlineBannerText: {
-    color: '#7A5B00',
-    fontSize: 13,
+    ...TYPOGRAPHY.labelMedium,
+    color: COLORS.warning,
     fontWeight: '600',
+    flex: 1,
   },
   card: {
-    borderRadius: 16,
+    borderRadius: RADIUS.lg,
     overflow: 'hidden',
-    backgroundColor: COLORS.card,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.07,
-    shadowRadius: 10,
-    elevation: 3,
+    backgroundColor: COLORS.surface,
+    ...ELEVATION.level1,
   },
   cardHeader: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
   },
   harvestHeader: {
     backgroundColor: COLORS.primary,
   },
   marketHeader: {
-    backgroundColor: '#1D4E89',
+    backgroundColor: COLORS.info,
   },
   cardHeaderText: {
-    color: '#FFFFFF',
-    fontSize: 17,
+    ...TYPOGRAPHY.titleSmall,
+    color: COLORS.onPrimary,
     fontWeight: '700',
   },
   cardBody: {
-    paddingVertical: 14,
-    rowGap: 12,
+    paddingVertical: SPACING.sm,
+    rowGap: SPACING.sm,
   },
   windowValue: {
-    color: COLORS.text,
-    fontSize: 27,
+    ...TYPOGRAPHY.headlineMedium,
+    color: COLORS.onSurface,
     lineHeight: 34,
     fontWeight: '800',
   },
   windowSubtitle: {
-    color: '#53606A',
-    fontSize: 14,
+    ...TYPOGRAPHY.bodyMedium,
+    color: COLORS.onSurfaceVariant,
     lineHeight: 21,
   },
   priceRange: {
-    color: COLORS.text,
-    fontSize: 24,
+    ...TYPOGRAPHY.headlineSmall,
+    color: COLORS.onSurface,
     lineHeight: 30,
     fontWeight: '800',
   },
   marketMeta: {
-    fontSize: 14,
-    color: '#4F5D67',
+    ...TYPOGRAPHY.bodyMedium,
+    color: COLORS.onSurfaceVariant,
   },
   profitBox: {
-    backgroundColor: '#EEF3F8',
-    borderRadius: 12,
-    padding: 12,
+    backgroundColor: COLORS.surfaceContainerLow,
+    borderRadius: RADIUS.md,
+    padding: SPACING.sm,
     rowGap: 6,
   },
   profitLine: {
-    color: COLORS.text,
-    fontSize: 14,
+    ...TYPOGRAPHY.bodyMedium,
+    color: COLORS.onSurface,
     fontWeight: '600',
   },
   whyHeaderRow: {
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   whyTitle: {
-    color: COLORS.text,
-    fontSize: 18,
+    ...TYPOGRAPHY.titleMedium,
+    color: COLORS.onSurface,
     fontWeight: '700',
   },
   whyBody: {
     paddingTop: 2,
-    paddingBottom: 16,
-    rowGap: 12,
+    paddingBottom: SPACING.md,
+    rowGap: SPACING.sm,
   },
   whyLoader: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 20,
+    paddingVertical: SPACING.lg,
   },
   loaderText: {
-    marginTop: 10,
-    color: '#58656D',
-    fontSize: 14,
+    ...TYPOGRAPHY.bodyMedium,
+    marginTop: SPACING.sm,
+    color: COLORS.onSurfaceVariant,
   },
   reasonRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    columnGap: 10,
+    columnGap: SPACING.sm,
   },
   reasonIcon: {
-    fontSize: 18,
+    ...TYPOGRAPHY.bodyLarge,
     marginTop: 1,
     color: COLORS.primary,
   },
   reasonText: {
     flex: 1,
-    color: '#2E3A42',
-    fontSize: 14,
+    ...TYPOGRAPHY.bodyMedium,
+    color: COLORS.onSurface,
     lineHeight: 21,
   },
   confidenceMessage: {
-    color: '#50616C',
-    fontSize: 13,
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.onSurfaceVariant,
     lineHeight: 18,
   },
   confidenceRow: {
     marginTop: 2,
     flexDirection: 'row',
     alignItems: 'center',
-    columnGap: 8,
+    columnGap: SPACING.sm,
   },
   confidenceDot: {
     width: 10,
     height: 10,
-    borderRadius: 999,
+    borderRadius: RADIUS.full,
   },
   confidenceText: {
-    color: '#3C4952',
-    fontSize: 13,
+    ...TYPOGRAPHY.labelMedium,
+    color: COLORS.onSurfaceVariant,
     fontWeight: '600',
   },
   skeletonHeader: {
-    backgroundColor: '#DDE5EC',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    backgroundColor: COLORS.surfaceContainerHigh,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
   },
   skeletonHeaderText: {
-    color: '#637180',
-    fontSize: 16,
+    ...TYPOGRAPHY.titleSmall,
+    color: COLORS.onSurfaceVariant,
     fontWeight: '700',
   },
   skeletonLineWide: {
     height: 18,
-    borderRadius: 10,
-    backgroundColor: '#E8EDF2',
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surfaceContainerHigh,
     width: '95%',
   },
   skeletonLineMid: {
     height: 14,
-    borderRadius: 10,
-    backgroundColor: '#EDF2F6',
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surfaceContainer,
     width: '72%',
   },
   skeletonLineShort: {
     height: 14,
-    borderRadius: 10,
-    backgroundColor: '#EDF2F6',
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surfaceContainer,
     width: '56%',
   },
   spoilageButton: {
-    borderRadius: 14,
-    marginTop: 6,
+    borderRadius: RADIUS.md,
+    marginTop: SPACING.xs,
   },
   spoilageButtonContent: {
     minHeight: 54,
@@ -521,19 +524,18 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 18,
     bottom: 22,
-    borderRadius: 999,
+    borderRadius: RADIUS.full,
     backgroundColor: COLORS.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.16,
-    shadowRadius: 8,
-    elevation: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    columnGap: 6,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    ...ELEVATION.level3,
   },
   ariaFabText: {
-    color: '#FFFFFF',
+    ...TYPOGRAPHY.labelMedium,
+    color: COLORS.onPrimary,
     fontWeight: '800',
-    fontSize: 13,
   },
 });

@@ -13,7 +13,8 @@ import { Appbar, Button, Card, Text } from 'react-native-paper';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
-import { COLORS } from '../theme/colors';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { COLORS, ELEVATION, RADIUS, SPACING, TYPOGRAPHY } from '../theme/colors';
 import { useLanguage } from '../context/LanguageContext';
 import { scanDisease } from '../services/apiService';
 
@@ -49,11 +50,17 @@ const DISEASE_NAME_MAP = {
     'Wheat___Brown_rust': 'गेहूं का भूरा रतुआ',
 };
 
+const RANK_ICONS = [
+    { icon: 'numeric-1-circle', color: COLORS.success },
+    { icon: 'numeric-2-circle', color: COLORS.info },
+    { icon: 'numeric-3-circle', color: COLORS.tertiary },
+];
+
 const TREATMENT_MAP = {
     default_disease: [
-        { rank: '🥇', label: 'सबसे सस्ता', treatment: 'नीम के तेल का छिड़काव', cost: 120, unit: 'एकड़' },
-        { rank: '🥈', label: 'सबसे असरदार', treatment: 'Mancozeb + Carbendazim spray', cost: 340, unit: 'एकड़' },
-        { rank: '🥉', label: 'Expert सलाह', treatment: 'Copper Oxychloride + systemic fungicide', cost: 580, unit: 'एकड़' },
+        { rankIdx: 0, label: 'सबसे सस्ता', treatment: 'नीम के तेल का छिड़काव', cost: 120, unit: 'एकड़' },
+        { rankIdx: 1, label: 'सबसे असरदार', treatment: 'Mancozeb + Carbendazim spray', cost: 340, unit: 'एकड़' },
+        { rankIdx: 2, label: 'Expert सलाह', treatment: 'Copper Oxychloride + systemic fungicide', cost: 580, unit: 'एकड़' },
     ],
     healthy: [],
 };
@@ -316,9 +323,15 @@ export default function DiseaseScreen({ navigation }) {
                             <Card style={styles.card}>
                                 <Card.Content style={styles.treatmentContent}>
                                     <Text style={styles.sectionTitle}>{tr('disease.treatmentTitle')}</Text>
-                                    {treatments.map((t) => (
-                                        <View key={t.rank} style={styles.treatmentRow}>
-                                            <Text style={styles.treatmentRank}>{t.rank}</Text>
+                                    {treatments.map((t, idx) => (
+                                        <View key={idx} style={styles.treatmentRow}>
+                                            <View style={styles.treatmentRankWrap}>
+                                                <MaterialCommunityIcons
+                                                    name={RANK_ICONS[t.rankIdx || idx]?.icon || 'circle'}
+                                                    size={28}
+                                                    color={RANK_ICONS[t.rankIdx || idx]?.color || COLORS.outline}
+                                                />
+                                            </View>
                                             <View style={styles.treatmentInfo}>
                                                 <Text style={styles.treatmentLabel}>{t.label}</Text>
                                                 <Text style={styles.treatmentName}>{t.treatment}</Text>
@@ -354,7 +367,9 @@ export default function DiseaseScreen({ navigation }) {
                 {result && !result.success ? (
                     <Card style={styles.card}>
                         <Card.Content style={styles.failContent}>
-                            <Text style={styles.failEmoji}>⚠️</Text>
+                            <View style={styles.failIconWrap}>
+                                <MaterialCommunityIcons name="alert-circle-outline" size={40} color={COLORS.warning} />
+                            </View>
                             <Text style={styles.failTitle}>
                                 {result.errorMessage || tr('disease.photoSaved')}
                             </Text>
@@ -363,7 +378,7 @@ export default function DiseaseScreen({ navigation }) {
                             </Text>
                             <Button mode="contained" onPress={analyseImage} buttonColor={COLORS.primary}
                                 style={{ marginBottom: 8 }}>
-                                {'🔄 ' + (tr('disease.retryAnalysis') || 'Retry Analysis')}
+                                {tr('disease.retryAnalysis') || 'Retry Analysis'}
                             </Button>
                             <Button mode="outlined" onPress={retake}>
                                 {tr('disease.retake')}
@@ -379,32 +394,32 @@ export default function DiseaseScreen({ navigation }) {
 const styles = StyleSheet.create({
     screen: { flex: 1, backgroundColor: COLORS.background },
     header: {
-        backgroundColor: COLORS.card,
+        backgroundColor: COLORS.surface,
         elevation: 0,
         borderBottomWidth: 1,
-        borderBottomColor: '#E6E9EC',
+        borderBottomColor: COLORS.outlineVariant,
     },
-    headerTitle: { fontWeight: '700', color: COLORS.text },
+    headerTitle: { ...TYPOGRAPHY.titleMedium, fontWeight: '700', color: COLORS.onSurface },
     scrollArea: { flex: 1 },
     scrollContent: {
-        paddingHorizontal: 16,
-        paddingTop: 16,
-        paddingBottom: 40,
-        rowGap: 14,
+        paddingHorizontal: SPACING.md,
+        paddingTop: SPACING.md,
+        paddingBottom: SPACING.xxl,
+        rowGap: SPACING.sm,
     },
-    titleBlock: { marginBottom: 4 },
+    titleBlock: { marginBottom: SPACING.xs },
     pageTitle: {
-        fontSize: 24,
+        ...TYPOGRAPHY.headlineSmall,
         fontWeight: '800',
-        color: COLORS.text,
-        marginBottom: 4,
+        color: COLORS.onSurface,
+        marginBottom: SPACING.xs,
     },
-    pageSubtitle: { fontSize: 15, color: '#5D6A72' },
+    pageSubtitle: { ...TYPOGRAPHY.bodyMedium, color: COLORS.onSurfaceVariant },
 
     cameraContainer: {
         width: '100%',
         height: CAMERA_HEIGHT,
-        borderRadius: 16,
+        borderRadius: RADIUS.lg,
         overflow: 'hidden',
         backgroundColor: '#000',
     },
@@ -423,7 +438,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         width: 40,
         height: 40,
-        borderColor: '#52B788',
+        borderColor: COLORS.accent,
         borderWidth: 3,
     },
     cornerTL: { top: 30, left: 30, borderRightWidth: 0, borderBottomWidth: 0 },
@@ -434,125 +449,132 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
+        padding: SPACING.lg,
         backgroundColor: '#1A1A1A',
     },
     noCameraText: {
+        ...TYPOGRAPHY.bodyMedium,
         color: '#ccc',
         textAlign: 'center',
-        marginBottom: 16,
-        fontSize: 14,
-        lineHeight: 22,
+        marginBottom: SPACING.md,
     },
 
     buttonRow: {
         flexDirection: 'row',
-        columnGap: 12,
+        columnGap: SPACING.sm,
     },
     captureButton: {
         flex: 1,
         backgroundColor: COLORS.primary,
-        borderRadius: 14,
-        paddingVertical: 16,
+        borderRadius: RADIUS.md,
+        paddingVertical: SPACING.md,
         alignItems: 'center',
     },
-    captureButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+    captureButtonText: { ...TYPOGRAPHY.labelLarge, color: COLORS.onPrimary, fontWeight: '700' },
     galleryButton: {
         flex: 1,
-        backgroundColor: COLORS.card,
-        borderRadius: 14,
-        paddingVertical: 16,
+        backgroundColor: COLORS.surface,
+        borderRadius: RADIUS.md,
+        paddingVertical: SPACING.md,
         alignItems: 'center',
         borderWidth: 1.5,
         borderColor: COLORS.primary,
     },
-    galleryButtonText: { color: COLORS.primary, fontSize: 16, fontWeight: '700' },
+    galleryButtonText: { ...TYPOGRAPHY.labelLarge, color: COLORS.primary, fontWeight: '700' },
     analyseButton: {
         flex: 2,
-        backgroundColor: '#2E7D32',
-        borderRadius: 14,
-        paddingVertical: 16,
+        backgroundColor: COLORS.primary,
+        borderRadius: RADIUS.md,
+        paddingVertical: SPACING.md,
         alignItems: 'center',
     },
-    analyseButtonText: { color: '#fff', fontSize: 18, fontWeight: '800' },
+    analyseButtonText: { ...TYPOGRAPHY.titleMedium, color: COLORS.onPrimary, fontWeight: '800' },
     retakeButton: {
         flex: 1,
-        backgroundColor: '#F5F5F5',
-        borderRadius: 14,
-        paddingVertical: 16,
+        backgroundColor: COLORS.surfaceVariant,
+        borderRadius: RADIUS.md,
+        paddingVertical: SPACING.md,
         alignItems: 'center',
     },
-    retakeButtonText: { color: '#555', fontSize: 15, fontWeight: '600' },
+    retakeButtonText: { ...TYPOGRAPHY.labelLarge, color: COLORS.onSurfaceVariant, fontWeight: '600' },
 
     card: {
-        borderRadius: 16,
+        borderRadius: RADIUS.lg,
         overflow: 'hidden',
-        backgroundColor: COLORS.card,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.07,
-        shadowRadius: 10,
-        elevation: 3,
+        backgroundColor: COLORS.surface,
+        ...ELEVATION.level1,
     },
     loaderContent: {
         alignItems: 'center',
-        paddingVertical: 30,
+        paddingVertical: SPACING.xl,
     },
-    loaderText: { marginTop: 12, color: '#58656D', fontSize: 15 },
+    loaderText: { ...TYPOGRAPHY.bodyMedium, marginTop: SPACING.sm, color: COLORS.onSurfaceVariant },
 
-    resultContent: { paddingVertical: 18, rowGap: 12 },
-    diseaseName: { fontSize: 22, fontWeight: '800', lineHeight: 30 },
+    resultContent: { paddingVertical: SPACING.md, rowGap: SPACING.sm },
+    diseaseName: { ...TYPOGRAPHY.titleLarge, fontWeight: '800', lineHeight: 30 },
     confidenceRow: {
         height: 8,
-        backgroundColor: '#E8EDF2',
-        borderRadius: 4,
+        backgroundColor: COLORS.surfaceContainerHigh,
+        borderRadius: RADIUS.xs,
         overflow: 'hidden',
     },
     confidenceBar: {
         height: '100%',
         backgroundColor: COLORS.accent,
-        borderRadius: 4,
+        borderRadius: RADIUS.xs,
     },
-    confidenceText: { fontSize: 14, color: '#4F5D67', fontWeight: '600' },
+    confidenceText: { ...TYPOGRAPHY.labelMedium, color: COLORS.onSurfaceVariant, fontWeight: '600' },
     impactBox: {
-        backgroundColor: '#FFF3CD',
-        borderRadius: 10,
-        padding: 12,
+        backgroundColor: COLORS.warningContainer,
+        borderRadius: RADIUS.md,
+        padding: SPACING.sm,
         borderWidth: 1,
-        borderColor: '#FFE0A0',
+        borderColor: COLORS.warning + '40',
     },
-    impactText: { fontSize: 14, color: '#7A5B00', fontWeight: '600', lineHeight: 22 },
+    impactText: { ...TYPOGRAPHY.bodyMedium, color: COLORS.warning, fontWeight: '600', lineHeight: 22 },
 
-    treatmentContent: { paddingVertical: 14, rowGap: 14 },
-    sectionTitle: { fontSize: 18, fontWeight: '700', color: COLORS.text },
+    treatmentContent: { paddingVertical: SPACING.sm, rowGap: SPACING.sm },
+    sectionTitle: { ...TYPOGRAPHY.titleMedium, fontWeight: '700', color: COLORS.onSurface },
     treatmentRow: {
         flexDirection: 'row',
         alignItems: 'flex-start',
-        columnGap: 12,
-        backgroundColor: '#F8FAF8',
-        borderRadius: 12,
-        padding: 12,
+        columnGap: SPACING.sm,
+        backgroundColor: COLORS.surfaceContainerLow,
+        borderRadius: RADIUS.md,
+        padding: SPACING.sm,
         borderWidth: 1,
-        borderColor: '#E5EDE5',
+        borderColor: COLORS.outlineVariant,
     },
-    treatmentRank: { fontSize: 24 },
+    treatmentRankWrap: {
+        width: 36,
+        height: 36,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     treatmentInfo: { flex: 1 },
-    treatmentLabel: { fontSize: 13, color: '#666', fontWeight: '600', marginBottom: 2 },
-    treatmentName: { fontSize: 15, color: COLORS.text, fontWeight: '700' },
-    treatmentCost: { fontSize: 14, color: '#2E7D32', fontWeight: '700', marginTop: 2 },
+    treatmentLabel: { ...TYPOGRAPHY.labelSmall, color: COLORS.onSurfaceVariant, fontWeight: '600', marginBottom: 2 },
+    treatmentName: { ...TYPOGRAPHY.bodyMedium, color: COLORS.onSurface, fontWeight: '700' },
+    treatmentCost: { ...TYPOGRAPHY.labelMedium, color: COLORS.success, fontWeight: '700', marginTop: 2 },
 
-    updatePlanButton: { borderRadius: 14, marginTop: 4 },
+    updatePlanButton: { borderRadius: RADIUS.md, marginTop: SPACING.xs },
     updatePlanContent: { minHeight: 54 },
-    retakeFull: { borderRadius: 14 },
+    retakeFull: { borderRadius: RADIUS.md },
 
-    failContent: { alignItems: 'center', paddingVertical: 24, rowGap: 12 },
-    failEmoji: { fontSize: 48 },
+    failContent: { alignItems: 'center', paddingVertical: SPACING.lg, rowGap: SPACING.sm },
+    failIconWrap: {
+        width: 64,
+        height: 64,
+        borderRadius: RADIUS.full,
+        backgroundColor: COLORS.warningContainer,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     failTitle: {
-        fontSize: 16,
-        color: COLORS.text,
+        ...TYPOGRAPHY.titleSmall,
+        color: COLORS.onSurface,
         fontWeight: '700',
         textAlign: 'center',
         lineHeight: 24,
     },
-    failSubtitle: { fontSize: 14, color: '#5D6A72', textAlign: 'center' },
+    failSubtitle: { ...TYPOGRAPHY.bodySmall, color: COLORS.onSurfaceVariant, textAlign: 'center' },
 });

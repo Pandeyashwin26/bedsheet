@@ -23,6 +23,15 @@ import SpoilageScreen from './src/screens/SpoilageScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
+// ── F1-F17 New Feature Screens ──
+import DigitalTwinScreen from './src/screens/DigitalTwinScreen';
+import PhotoDiagnosticScreen from './src/screens/PhotoDiagnosticScreen';
+import NegotiationSimulatorScreen from './src/screens/NegotiationSimulatorScreen';
+import LeaderboardScreen from './src/screens/LeaderboardScreen';
+import CropDiaryScreen from './src/screens/CropDiaryScreen';
+import MarketplaceScreen from './src/screens/MarketplaceScreen';
+import BuyerConnectScreen from './src/screens/BuyerConnectScreen';
+import ColdStorageScreen from './src/screens/ColdStorageScreen';
 import { COLORS, ELEVATION } from './src/theme/colors';
 import { setupNotifications, showPermissionResult } from './src/services/notificationService';
 import { AriaProvider } from './src/context/AriaContext';
@@ -161,6 +170,15 @@ function AppNavigator() {
       <Stack.Screen name="Alerts" component={AlertsScreen} />
       <Stack.Screen name="Schemes" component={SchemesScreen} />
       <Stack.Screen name="Dashboard" component={DashboardScreen} />
+      {/* F1-F17 New Feature Screens */}
+      <Stack.Screen name="DigitalTwin" component={DigitalTwinScreen} />
+      <Stack.Screen name="PhotoDiagnostic" component={PhotoDiagnosticScreen} />
+      <Stack.Screen name="NegotiationSimulator" component={NegotiationSimulatorScreen} />
+      <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
+      <Stack.Screen name="CropDiary" component={CropDiaryScreen} />
+      <Stack.Screen name="Marketplace" component={MarketplaceScreen} />
+      <Stack.Screen name="BuyerConnect" component={BuyerConnectScreen} />
+      <Stack.Screen name="ColdStorage" component={ColdStorageScreen} />
     </Stack.Navigator>
   );
 }

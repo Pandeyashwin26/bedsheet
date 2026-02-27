@@ -9,17 +9,18 @@ import {
 } from 'react-native';
 import { ActivityIndicator, Appbar, Button, Card, Text } from 'react-native-paper';
 import * as Location from 'expo-location';
-import { COLORS } from '../theme/colors';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { COLORS, ELEVATION, RADIUS, SPACING, TYPOGRAPHY } from '../theme/colors';
 import { useLanguage } from '../context/LanguageContext';
 import { CROP_OPTIONS } from '../data/agriOptions';
 
 const GOOGLE_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_API_KEY || '';
 
 const TYPE_COLORS = {
-    subsidy: { bg: '#E8F5E9', text: '#2E7D32', label: 'सब्सिडी' },
-    insurance: { bg: '#E3F2FD', text: '#1565C0', label: 'बीमा' },
-    loan: { bg: '#FFF3E0', text: '#E65100', label: 'लोन' },
-    msp: { bg: '#F3E5F5', text: '#7B1FA2', label: 'MSP' },
+    subsidy: { bg: COLORS.successContainer, text: COLORS.success, label: 'सब्सिडी', icon: 'cash-multiple' },
+    insurance: { bg: COLORS.infoContainer, text: COLORS.info, label: 'बीमा', icon: 'shield-check-outline' },
+    loan: { bg: COLORS.warningContainer, text: COLORS.warning, label: 'लोन', icon: 'bank-outline' },
+    msp: { bg: '#F3E5F5', text: COLORS.chain, label: 'MSP', icon: 'scale-balance' },
 };
 
 const STATE_FROM_COORDS = (lat, lon) => {
@@ -162,6 +163,7 @@ export default function SchemesScreen({ navigation }) {
                     <View style={styles.schemeTopRow}>
                         <Text style={styles.schemeName}>{item.name}</Text>
                         <View style={[styles.typeBadge, { backgroundColor: typeConfig.bg }]}>
+                            <MaterialCommunityIcons name={typeConfig.icon} size={14} color={typeConfig.text} />
                             <Text style={[styles.typeBadgeText, { color: typeConfig.text }]}>
                                 {typeConfig.label}
                             </Text>
@@ -215,9 +217,15 @@ export default function SchemesScreen({ navigation }) {
             </Appbar.Header>
 
             <View style={styles.stateRow}>
-                <Text style={styles.stateLabel}>📍 {state}</Text>
+                <View style={styles.stateRowLeft}>
+                    <MaterialCommunityIcons name="map-marker-outline" size={18} color={COLORS.primary} />
+                    <Text style={styles.stateLabel}>{state}</Text>
+                </View>
                 {fromAI ? (
-                    <Text style={styles.aiLabel}>{t('schemes.aiPowered')}</Text>
+                    <View style={styles.aiBadge}>
+                        <MaterialCommunityIcons name="creation" size={14} color={COLORS.primary} />
+                        <Text style={styles.aiLabel}>{t('schemes.aiPowered')}</Text>
+                    </View>
                 ) : null}
             </View>
 
@@ -270,92 +278,105 @@ export default function SchemesScreen({ navigation }) {
 const styles = StyleSheet.create({
     screen: { flex: 1, backgroundColor: COLORS.background },
     header: {
-        backgroundColor: COLORS.card,
+        backgroundColor: COLORS.surface,
         elevation: 0,
         borderBottomWidth: 1,
-        borderBottomColor: '#E6E9EC',
+        borderBottomColor: COLORS.outlineVariant,
     },
-    headerTitle: { fontWeight: '700', color: COLORS.text, fontSize: 20 },
+    headerTitle: { ...TYPOGRAPHY.titleMedium, fontWeight: '700', color: COLORS.onSurface },
     stateRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        backgroundColor: '#F0F4F8',
+        paddingHorizontal: SPACING.md,
+        paddingVertical: SPACING.sm,
+        backgroundColor: COLORS.surfaceContainerLow,
     },
-    stateLabel: { fontSize: 14, fontWeight: '600', color: '#3A4A56' },
-    aiLabel: { fontSize: 12, fontWeight: '700', color: COLORS.accent },
+    stateRowLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        columnGap: SPACING.xs,
+    },
+    stateLabel: { ...TYPOGRAPHY.labelLarge, fontWeight: '600', color: COLORS.onSurface },
+    aiBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        columnGap: 4,
+        backgroundColor: COLORS.primaryContainer,
+        paddingHorizontal: SPACING.sm,
+        paddingVertical: 4,
+        borderRadius: RADIUS.full,
+    },
+    aiLabel: { ...TYPOGRAPHY.labelSmall, fontWeight: '700', color: COLORS.primary },
 
     cropScroll: { flexGrow: 0 },
     cropScrollContent: {
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        columnGap: 8,
+        paddingHorizontal: SPACING.md,
+        paddingVertical: SPACING.sm,
+        columnGap: SPACING.sm,
     },
     cropPill: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        backgroundColor: '#EDF1F5',
+        paddingHorizontal: SPACING.md,
+        paddingVertical: SPACING.sm,
+        borderRadius: RADIUS.full,
+        backgroundColor: COLORS.surfaceVariant,
     },
     cropPillActive: { backgroundColor: COLORS.primary },
-    cropPillText: { fontSize: 14, fontWeight: '600', color: '#4F5B62' },
-    cropPillTextActive: { color: '#FFFFFF' },
+    cropPillText: { ...TYPOGRAPHY.labelMedium, fontWeight: '600', color: COLORS.onSurfaceVariant },
+    cropPillTextActive: { color: COLORS.onPrimary },
 
     loader: { alignItems: 'center', paddingTop: 60 },
-    loaderText: { marginTop: 12, color: '#58656D', fontSize: 14 },
+    loaderText: { ...TYPOGRAPHY.bodyMedium, marginTop: SPACING.sm, color: COLORS.onSurfaceVariant },
 
     listContent: {
-        paddingHorizontal: 16,
-        paddingTop: 8,
-        paddingBottom: 30,
-        rowGap: 12,
+        paddingHorizontal: SPACING.md,
+        paddingTop: SPACING.sm,
+        paddingBottom: SPACING.xl,
+        rowGap: SPACING.sm,
     },
     schemeCard: {
-        borderRadius: 16,
-        backgroundColor: COLORS.card,
-        elevation: 3,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.07,
-        shadowRadius: 10,
+        borderRadius: RADIUS.lg,
+        backgroundColor: COLORS.surface,
+        ...ELEVATION.level1,
     },
-    schemeContent: { paddingVertical: 16, rowGap: 10 },
+    schemeContent: { paddingVertical: SPACING.md, rowGap: SPACING.sm },
     schemeTopRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        columnGap: 8,
+        columnGap: SPACING.sm,
     },
     schemeName: {
         flex: 1,
-        fontSize: 17,
+        ...TYPOGRAPHY.titleSmall,
         fontWeight: '800',
-        color: COLORS.text,
+        color: COLORS.onSurface,
         lineHeight: 24,
     },
     typeBadge: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        columnGap: 4,
+        paddingHorizontal: SPACING.sm,
+        paddingVertical: SPACING.xs,
+        borderRadius: RADIUS.full,
     },
-    typeBadgeText: { fontSize: 12, fontWeight: '700' },
+    typeBadgeText: { ...TYPOGRAPHY.labelSmall, fontWeight: '700' },
     benefitAmount: {
-        fontSize: 22,
+        ...TYPOGRAPHY.titleLarge,
         fontWeight: '800',
-        color: '#2E7D32',
+        color: COLORS.success,
     },
     detailRow: { flexDirection: 'row', columnGap: 6 },
-    detailLabel: { fontSize: 13, fontWeight: '700', color: '#5D6A72' },
-    detailValue: { flex: 1, fontSize: 13, color: '#3A4A56', lineHeight: 20 },
+    detailLabel: { ...TYPOGRAPHY.labelSmall, fontWeight: '700', color: COLORS.onSurfaceVariant },
+    detailValue: { flex: 1, ...TYPOGRAPHY.bodySmall, color: COLORS.onSurface, lineHeight: 20 },
     deadlineBox: {
-        backgroundColor: '#FFEBEE',
-        borderRadius: 10,
-        padding: 10,
+        backgroundColor: COLORS.errorContainer,
+        borderRadius: RADIUS.md,
+        padding: SPACING.sm,
         borderWidth: 1,
-        borderColor: '#EF9A9A',
+        borderColor: COLORS.error + '40',
     },
-    deadlineText: { fontSize: 14, fontWeight: '700', color: '#C62828' },
-    applyButton: { borderRadius: 12, marginTop: 4 },
+    deadlineText: { ...TYPOGRAPHY.labelMedium, fontWeight: '700', color: COLORS.error },
+    applyButton: { borderRadius: RADIUS.md, marginTop: SPACING.xs },
 });

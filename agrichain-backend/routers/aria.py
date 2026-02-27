@@ -45,6 +45,8 @@ class AriaContext(BaseModel):
     district: str = Field(default="Unknown")
     risk_category: str = Field(default="Unknown")
     last_recommendation: str = Field(default="Unknown")
+    negotiate_intent: bool = Field(default=False)
+    negotiate_crop: str = Field(default="Unknown")
 
 
 class AriaChatRequest(BaseModel):
@@ -70,6 +72,21 @@ def _normalize_language(code: str) -> str:
 
 def _build_system_prompt(ctx: AriaContext, lang: str) -> str:
     preferred = LANGUAGE_LABELS.get(lang, "English")
+
+    negotiate_section = ""
+    if getattr(ctx, "negotiate_intent", False):
+        crop = getattr(ctx, "negotiate_crop", ctx.crop)
+        negotiate_section = (
+            "\n\nFarmer is asking about NEGOTIATION / PRICING strategy.\n"
+            f"Crop being negotiated: {crop}\n"
+            "Give actionable bargaining tips:\n"
+            "- Current fair market range (approx MSP or mandi avg)\n"
+            "- Best time of day to sell at mandi\n"
+            "- Quality factors that increase price\n"
+            "- How to counter lowball offers\n"
+            "- Suggest the Negotiation Simulator for practice\n"
+        )
+
     return (
         "Tu ARIA hai — ek AI assistant jo sirf Indian farmers ki madad karta hai.\n"
         "Rules:\n"
@@ -84,6 +101,7 @@ def _build_system_prompt(ctx: AriaContext, lang: str) -> str:
         f"Crop: {ctx.crop}, District: {ctx.district}, "
         f"Spoilage Risk: {ctx.risk_category}, "
         f"Last Recommendation: {ctx.last_recommendation}\n\n"
+        f"{negotiate_section}"
         f"Reply language preference: {preferred}."
     )
 

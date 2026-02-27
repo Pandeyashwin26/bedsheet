@@ -1,14 +1,6 @@
-/**
- * AGRI-मित्र Profile Screen
- * ═══════════════════════════════════════════════════════════════════════════════
- *
- * Full user profile with view/edit, language switcher, and account settings.
- */
-
 import React, { useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
@@ -17,8 +9,9 @@ import {
   ActivityIndicator,
   StatusBar,
 } from 'react-native';
+import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS } from '../theme/colors';
+import { COLORS, ELEVATION, RADIUS, SPACING, TYPOGRAPHY } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
@@ -33,28 +26,21 @@ export default function ProfileScreen({ navigation }) {
   const [pwModal, setPwModal] = useState(false);
   const [pwForm, setPwForm] = useState({ current: '', newPw: '', confirm: '' });
 
-  // ─── Guest mode ─────────────────────────────────────────────────────────
   if (!isAuthenticated) {
     return (
       <View style={styles.guestContainer}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-        <MaterialCommunityIcons name="account-off-outline" size={64} color="#ccc" />
+        <View style={styles.guestIconWrap}>
+          <MaterialCommunityIcons name="account-off-outline" size={48} color={COLORS.onSurfaceVariant} />
+        </View>
         <Text style={styles.guestTitle}>{t('profile.guestTitle')}</Text>
         <Text style={styles.guestSub}>{t('profile.guestSubtitle')}</Text>
-
         <Text style={styles.langLabel}>{t('profile.language')}</Text>
-        <LanguageSwitcher style={{ marginBottom: 24 }} />
-
-        <TouchableOpacity
-          style={styles.loginBtn}
-          onPress={() => navigation.navigate('Login')}
-        >
+        <LanguageSwitcher style={{ marginBottom: SPACING.lg }} />
+        <TouchableOpacity style={styles.loginBtn} onPress={() => navigation.navigate('Login')}>
           <Text style={styles.loginBtnText}>{t('auth.loginBtn')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.registerLink}
-          onPress={() => navigation.navigate('Register')}
-        >
+        <TouchableOpacity style={styles.registerLink} onPress={() => navigation.navigate('Register')}>
           <Text style={styles.registerLinkText}>
             {t('auth.noAccount')} <Text style={styles.linkText}>{t('auth.registerNow')}</Text>
           </Text>
@@ -63,16 +49,11 @@ export default function ProfileScreen({ navigation }) {
     );
   }
 
-  // ─── Start editing ──────────────────────────────────────────────────────
   const startEdit = () => {
     setForm({
-      full_name: user.full_name || '',
-      email: user.email || '',
-      district: user.district || '',
-      state: user.state || 'Maharashtra',
-      main_crop: user.main_crop || '',
-      farm_size_acres: user.farm_size_acres ? String(user.farm_size_acres) : '',
-      soil_type: user.soil_type || '',
+      full_name: user.full_name || '', email: user.email || '', district: user.district || '',
+      state: user.state || 'Maharashtra', main_crop: user.main_crop || '',
+      farm_size_acres: user.farm_size_acres ? String(user.farm_size_acres) : '', soil_type: user.soil_type || '',
     });
     setEditing(true);
   };
@@ -87,25 +68,16 @@ export default function ProfileScreen({ navigation }) {
       setEditing(false);
     } catch (err) {
       Alert.alert(t('common.error'), err?.response?.data?.detail || t('profile.saveFailed'));
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
   const handlePasswordChange = async () => {
-    if (pwForm.newPw.length < 6) {
-      Alert.alert(t('common.error'), t('auth.passwordMin'));
-      return;
-    }
-    if (pwForm.newPw !== pwForm.confirm) {
-      Alert.alert(t('common.error'), t('auth.passwordMismatch'));
-      return;
-    }
+    if (pwForm.newPw.length < 6) { Alert.alert(t('common.error'), t('auth.passwordMin')); return; }
+    if (pwForm.newPw !== pwForm.confirm) { Alert.alert(t('common.error'), t('auth.passwordMismatch')); return; }
     try {
       await changePassword(pwForm.current, pwForm.newPw);
-      Alert.alert('✓', t('profile.passwordChanged'));
-      setPwModal(false);
-      setPwForm({ current: '', newPw: '', confirm: '' });
+      Alert.alert('', t('profile.passwordChanged'));
+      setPwModal(false); setPwForm({ current: '', newPw: '', confirm: '' });
     } catch (err) {
       Alert.alert(t('common.error'), err?.response?.data?.detail || t('profile.passwordFailed'));
     }
@@ -118,10 +90,11 @@ export default function ProfileScreen({ navigation }) {
     ]);
   };
 
-  // ─── Profile field row ─────────────────────────────────────────────────
   const ProfileField = ({ icon, label, value, field }) => (
     <View style={styles.fieldRow}>
-      <MaterialCommunityIcons name={icon} size={20} color={COLORS.primary} style={styles.fieldIcon} />
+      <View style={styles.fieldIconWrap}>
+        <MaterialCommunityIcons name={icon} size={18} color={COLORS.primary} />
+      </View>
       <View style={styles.fieldBody}>
         <Text style={styles.fieldLabel}>{label}</Text>
         {editing && field ? (
@@ -129,8 +102,7 @@ export default function ProfileScreen({ navigation }) {
             style={styles.fieldInput}
             value={form[field] || ''}
             onChangeText={v => setForm(prev => ({ ...prev, [field]: v }))}
-            placeholder="—"
-            placeholderTextColor="#ccc"
+            placeholder="—" placeholderTextColor={COLORS.outline}
           />
         ) : (
           <Text style={styles.fieldValue}>{value || '—'}</Text>
@@ -142,118 +114,82 @@ export default function ProfileScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
-
-      {/* ── Header ─────────────────────────────────────────────────── */}
       <View style={styles.header}>
         <View style={styles.avatarCircle}>
-          <MaterialCommunityIcons name="account" size={40} color="#fff" />
+          <MaterialCommunityIcons name="account-outline" size={36} color={COLORS.onPrimary} />
         </View>
         <Text style={styles.headerName}>{user.full_name}</Text>
         <Text style={styles.headerPhone}>{user.phone}</Text>
       </View>
 
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
-        {/* ── Info Card ─────────────────────────────────────────────── */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>{t('profile.personalInfo')}</Text>
             {!editing ? (
-              <TouchableOpacity onPress={startEdit}>
-                <MaterialCommunityIcons name="pencil" size={20} color={COLORS.primary} />
+              <TouchableOpacity onPress={startEdit} hitSlop={8}>
+                <MaterialCommunityIcons name="pencil-outline" size={20} color={COLORS.primary} />
               </TouchableOpacity>
             ) : (
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <TouchableOpacity onPress={() => setEditing(false)}>
-                  <MaterialCommunityIcons name="close" size={22} color="#999" />
+              <View style={{ flexDirection: 'row', gap: SPACING.sm }}>
+                <TouchableOpacity onPress={() => setEditing(false)} hitSlop={8}>
+                  <MaterialCommunityIcons name="close" size={22} color={COLORS.onSurfaceVariant} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={saveEdit} disabled={saving}>
-                  {saving ? (
-                    <ActivityIndicator size="small" color={COLORS.primary} />
-                  ) : (
-                    <MaterialCommunityIcons name="check" size={22} color={COLORS.accent} />
-                  )}
+                <TouchableOpacity onPress={saveEdit} disabled={saving} hitSlop={8}>
+                  {saving ? <ActivityIndicator size="small" color={COLORS.primary} /> : <MaterialCommunityIcons name="check" size={22} color={COLORS.success} />}
                 </TouchableOpacity>
               </View>
             )}
           </View>
-
-          <ProfileField icon="account" label={t('auth.fullName')} value={user.full_name} field="full_name" />
-          <ProfileField icon="email" label={t('profile.email')} value={user.email} field="email" />
-          <ProfileField icon="map-marker" label={t('auth.district')} value={user.district} field="district" />
-          <ProfileField icon="map" label={t('profile.state')} value={user.state} field="state" />
-          <ProfileField icon="sprout" label={t('auth.mainCrop')} value={user.main_crop} field="main_crop" />
+          <ProfileField icon="account-outline" label={t('auth.fullName')} value={user.full_name} field="full_name" />
+          <ProfileField icon="email-outline" label={t('profile.email')} value={user.email} field="email" />
+          <ProfileField icon="map-marker-outline" label={t('auth.district')} value={user.district} field="district" />
+          <ProfileField icon="map-outline" label={t('profile.state')} value={user.state} field="state" />
+          <ProfileField icon="sprout-outline" label={t('auth.mainCrop')} value={user.main_crop} field="main_crop" />
           <ProfileField icon="ruler-square" label={t('auth.farmSize')} value={user.farm_size_acres ? `${user.farm_size_acres} acres` : null} field="farm_size_acres" />
           <ProfileField icon="terrain" label={t('auth.soilType')} value={user.soil_type} field="soil_type" />
         </View>
 
-        {/* ── Language ──────────────────────────────────────────────── */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{t('profile.language')}</Text>
-          <LanguageSwitcher style={{ marginTop: 10 }} />
+          <LanguageSwitcher style={{ marginTop: SPACING.sm }} />
         </View>
 
-        {/* ── Password change ───────────────────────────────────────── */}
         {!pwModal ? (
           <TouchableOpacity style={styles.menuItem} onPress={() => setPwModal(true)}>
-            <MaterialCommunityIcons name="lock-reset" size={22} color={COLORS.primary} />
+            <MaterialCommunityIcons name="lock-outline" size={22} color={COLORS.primary} />
             <Text style={styles.menuText}>{t('profile.changePassword')}</Text>
-            <MaterialCommunityIcons name="chevron-right" size={22} color="#ccc" />
+            <MaterialCommunityIcons name="chevron-right" size={22} color={COLORS.outline} />
           </TouchableOpacity>
         ) : (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>{t('profile.changePassword')}</Text>
-            <TextInput
-              style={styles.pwInput}
-              placeholder={t('profile.currentPassword')}
-              placeholderTextColor="#aaa"
-              secureTextEntry
-              value={pwForm.current}
-              onChangeText={v => setPwForm(p => ({ ...p, current: v }))}
-            />
-            <TextInput
-              style={styles.pwInput}
-              placeholder={t('profile.newPassword')}
-              placeholderTextColor="#aaa"
-              secureTextEntry
-              value={pwForm.newPw}
-              onChangeText={v => setPwForm(p => ({ ...p, newPw: v }))}
-            />
-            <TextInput
-              style={styles.pwInput}
-              placeholder={t('auth.confirmPassword')}
-              placeholderTextColor="#aaa"
-              secureTextEntry
-              value={pwForm.confirm}
-              onChangeText={v => setPwForm(p => ({ ...p, confirm: v }))}
-            />
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
-              <TouchableOpacity
-                style={[styles.pwBtn, { backgroundColor: '#eee' }]}
-                onPress={() => { setPwModal(false); setPwForm({ current: '', newPw: '', confirm: '' }); }}
-              >
-                <Text style={{ color: '#666' }}>{t('common.cancel')}</Text>
+            <TextInput style={styles.pwInput} placeholder={t('profile.currentPassword')} placeholderTextColor={COLORS.outline} secureTextEntry value={pwForm.current} onChangeText={v => setPwForm(p => ({ ...p, current: v }))} />
+            <TextInput style={styles.pwInput} placeholder={t('profile.newPassword')} placeholderTextColor={COLORS.outline} secureTextEntry value={pwForm.newPw} onChangeText={v => setPwForm(p => ({ ...p, newPw: v }))} />
+            <TextInput style={styles.pwInput} placeholder={t('auth.confirmPassword')} placeholderTextColor={COLORS.outline} secureTextEntry value={pwForm.confirm} onChangeText={v => setPwForm(p => ({ ...p, confirm: v }))} />
+            <View style={{ flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.sm }}>
+              <TouchableOpacity style={[styles.pwBtn, { backgroundColor: COLORS.surfaceVariant }]} onPress={() => { setPwModal(false); setPwForm({ current: '', newPw: '', confirm: '' }); }}>
+                <Text style={{ ...TYPOGRAPHY.labelLarge, color: COLORS.onSurfaceVariant }}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.pwBtn} onPress={handlePasswordChange}>
-                <Text style={{ color: '#fff', fontWeight: '600' }}>{t('common.save')}</Text>
+                <Text style={{ ...TYPOGRAPHY.labelLarge, color: COLORS.onPrimary }}>{t('common.save')}</Text>
               </TouchableOpacity>
             </View>
           </View>
         )}
 
-        {/* ── Dashboard link ────────────────────────────────────────── */}
         <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Dashboard')}>
-          <MaterialCommunityIcons name="view-dashboard" size={22} color={COLORS.primary} />
+          <MaterialCommunityIcons name="view-dashboard-outline" size={22} color={COLORS.primary} />
           <Text style={styles.menuText}>{t('profile.dashboard')}</Text>
-          <MaterialCommunityIcons name="chevron-right" size={22} color="#ccc" />
+          <MaterialCommunityIcons name="chevron-right" size={22} color={COLORS.outline} />
         </TouchableOpacity>
 
-        {/* ── Logout ────────────────────────────────────────────────── */}
         <TouchableOpacity style={[styles.menuItem, styles.logoutItem]} onPress={handleLogout}>
-          <MaterialCommunityIcons name="logout" size={22} color={COLORS.warning} />
-          <Text style={[styles.menuText, { color: COLORS.warning }]}>{t('profile.logout')}</Text>
+          <MaterialCommunityIcons name="logout" size={22} color={COLORS.error} />
+          <Text style={[styles.menuText, { color: COLORS.error }]}>{t('profile.logout')}</Text>
         </TouchableOpacity>
 
-        <View style={{ height: 30 }} />
+        <View style={{ height: SPACING.xl }} />
       </ScrollView>
     </View>
   );
@@ -262,74 +198,40 @@ export default function ProfileScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
 
-  // Guest
-  guestContainer: {
-    flex: 1, backgroundColor: COLORS.background,
-    justifyContent: 'center', alignItems: 'center', padding: 30,
-  },
-  guestTitle: { fontSize: 20, fontWeight: '700', color: COLORS.text, marginTop: 16, marginBottom: 6 },
-  guestSub: { fontSize: 14, color: '#777', textAlign: 'center', marginBottom: 20 },
-  langLabel: { fontSize: 14, fontWeight: '600', color: '#555', marginBottom: 8 },
-  loginBtn: {
-    backgroundColor: COLORS.primary, borderRadius: 12, height: 50, width: '80%',
-    justifyContent: 'center', alignItems: 'center', marginBottom: 12,
-  },
-  loginBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  registerLink: { paddingVertical: 8 },
-  registerLinkText: { fontSize: 14, color: '#666' },
+  guestContainer: { flex: 1, backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center', padding: SPACING.xl },
+  guestIconWrap: { width: 88, height: 88, borderRadius: 44, backgroundColor: COLORS.surfaceVariant, justifyContent: 'center', alignItems: 'center', marginBottom: SPACING.md },
+  guestTitle: { ...TYPOGRAPHY.titleLarge, color: COLORS.onSurface, fontWeight: '700', marginBottom: SPACING.xs },
+  guestSub: { ...TYPOGRAPHY.bodyMedium, color: COLORS.onSurfaceVariant, textAlign: 'center', marginBottom: SPACING.lg },
+  langLabel: { ...TYPOGRAPHY.labelMedium, color: COLORS.onSurfaceVariant, marginBottom: SPACING.sm },
+  loginBtn: { backgroundColor: COLORS.primary, borderRadius: RADIUS.lg, height: 52, width: '80%', justifyContent: 'center', alignItems: 'center', marginBottom: SPACING.sm },
+  loginBtnText: { ...TYPOGRAPHY.labelLarge, color: COLORS.onPrimary },
+  registerLink: { paddingVertical: SPACING.sm },
+  registerLinkText: { ...TYPOGRAPHY.bodyMedium, color: COLORS.onSurfaceVariant },
   linkText: { color: COLORS.primary, fontWeight: '700' },
 
-  // Header
-  header: {
-    backgroundColor: COLORS.primary, paddingTop: 48, paddingBottom: 24,
-    alignItems: 'center', borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
-  },
-  avatarCircle: {
-    width: 72, height: 72, borderRadius: 36,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center', alignItems: 'center', marginBottom: 10,
-  },
-  headerName: { fontSize: 20, fontWeight: '800', color: '#fff' },
-  headerPhone: { fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
+  header: { backgroundColor: COLORS.primary, paddingTop: 48, paddingBottom: SPACING.lg, alignItems: 'center', borderBottomLeftRadius: RADIUS.xl, borderBottomRightRadius: RADIUS.xl },
+  avatarCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(255,255,255,0.18)', justifyContent: 'center', alignItems: 'center', marginBottom: SPACING.sm },
+  headerName: { ...TYPOGRAPHY.titleLarge, color: COLORS.onPrimary, fontWeight: '800' },
+  headerPhone: { ...TYPOGRAPHY.bodyMedium, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
 
-  // Body
-  body: { flex: 1, marginTop: -8 },
-  bodyContent: { paddingHorizontal: 16, paddingTop: 16 },
+  body: { flex: 1, marginTop: -SPACING.sm },
+  bodyContent: { paddingHorizontal: SPACING.md, paddingTop: SPACING.md },
 
-  // Card
-  card: { backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: 12, elevation: 1 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: COLORS.text },
+  card: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: SPACING.md, marginBottom: SPACING.sm, ...ELEVATION.level1 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.sm },
+  cardTitle: { ...TYPOGRAPHY.titleSmall, color: COLORS.onSurface, fontWeight: '700' },
 
-  // Field
-  fieldRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: '#F0F0F0' },
-  fieldIcon: { marginRight: 12 },
+  fieldRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: SPACING.sm, borderBottomWidth: 0.5, borderBottomColor: COLORS.outlineVariant },
+  fieldIconWrap: { width: 32, height: 32, borderRadius: RADIUS.sm, backgroundColor: COLORS.primaryContainer, justifyContent: 'center', alignItems: 'center', marginRight: SPACING.sm },
   fieldBody: { flex: 1 },
-  fieldLabel: { fontSize: 11, color: '#999', marginBottom: 2 },
-  fieldValue: { fontSize: 15, color: COLORS.text },
-  fieldInput: {
-    fontSize: 15, color: COLORS.text,
-    borderBottomWidth: 1.5, borderBottomColor: COLORS.accent,
-    paddingVertical: 2,
-  },
+  fieldLabel: { ...TYPOGRAPHY.labelSmall, color: COLORS.onSurfaceVariant, marginBottom: 1 },
+  fieldValue: { ...TYPOGRAPHY.bodyMedium, color: COLORS.onSurface },
+  fieldInput: { ...TYPOGRAPHY.bodyMedium, color: COLORS.onSurface, borderBottomWidth: 1.5, borderBottomColor: COLORS.primary, paddingVertical: 2 },
 
-  // Menu Item
-  menuItem: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: 10,
-    elevation: 1,
-  },
-  menuText: { flex: 1, fontSize: 15, fontWeight: '600', color: COLORS.text, marginLeft: 12 },
-  logoutItem: { borderWidth: 1, borderColor: COLORS.warning + '30' },
+  menuItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: SPACING.md, marginBottom: SPACING.sm, ...ELEVATION.level1 },
+  menuText: { flex: 1, ...TYPOGRAPHY.bodyLarge, fontWeight: '600', color: COLORS.onSurface, marginLeft: SPACING.sm },
+  logoutItem: { borderWidth: 1, borderColor: COLORS.error + '25' },
 
-  // Password
-  pwInput: {
-    borderWidth: 1.5, borderColor: '#E0E0E0', borderRadius: 10,
-    height: 46, paddingHorizontal: 14, fontSize: 15, marginTop: 10,
-    backgroundColor: '#FAFAFA', color: COLORS.text,
-  },
-  pwBtn: {
-    flex: 1, height: 42, borderRadius: 10,
-    backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center',
-  },
+  pwInput: { borderWidth: 1.5, borderColor: COLORS.outlineVariant, borderRadius: RADIUS.md, height: 48, paddingHorizontal: SPACING.md, ...TYPOGRAPHY.bodyMedium, marginTop: SPACING.sm, backgroundColor: COLORS.surfaceVariant, color: COLORS.onSurface },
+  pwBtn: { flex: 1, height: 44, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
 });

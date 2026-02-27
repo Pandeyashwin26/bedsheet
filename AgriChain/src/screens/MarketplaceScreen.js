@@ -14,7 +14,7 @@ import { COLORS, ELEVATION, RADIUS, SPACING, TYPOGRAPHY } from '../theme/colors'
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 
-const BASE_URL = 'http://10.17.16.40:8000';
+const BASE_URL = 'http://10.203.179.61:8000';
 
 const CATEGORY_ICONS = {
   fungicide: { icon: 'shield-bug', color: '#D32F2F' },

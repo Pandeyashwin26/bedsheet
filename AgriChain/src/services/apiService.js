@@ -15,7 +15,7 @@ import NetInfo from '@react-native-community/netinfo';
 // For development: Set EXPO_PUBLIC_BACKEND_URL in your .env file
 // For production: Set to your deployed API URL
 // NOTE: localhost won't work on physical devices — use your computer's LAN IP
-const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.17.16.40:8000';
+const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.203.179.61:8000';
 
 // Cache configuration
 const CACHE_PREFIX = 'agrimitra_api_cache_v1';

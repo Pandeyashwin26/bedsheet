@@ -34,7 +34,7 @@ export function LanguageProvider({ children }) {
     (async () => {
       try {
         const saved = await AsyncStorage.getItem(STORAGE_KEY);
-        if (saved && ['en', 'hi', 'mr'].includes(saved)) {
+        if (saved && ['en', 'hi', 'mr', 'gu'].includes(saved)) {
           setLangState(saved);
         }
       } catch {
@@ -45,7 +45,7 @@ export function LanguageProvider({ children }) {
   }, []);
 
   const setLanguage = useCallback(async (code) => {
-    if (!['en', 'hi', 'mr'].includes(code)) return;
+    if (!['en', 'hi', 'mr', 'gu'].includes(code)) return;
     setLangState(code);
     try {
       await AsyncStorage.setItem(STORAGE_KEY, code);

@@ -590,7 +590,31 @@ export default {
     lockedInEscrow: 'Locked in Escrow',
     trustExplainer: 'Every deal and AI recommendation is anchored on the Polygon blockchain. This ensures transparency — no one can alter the terms after agreement.',
   },
-
+  /* ── AGRI-मित्र Game ─────────────────────────────────────── */
+  game: {
+    title: 'AGRI-मित्र Game',
+    tagline: 'Play. Learn. Experience farming.',
+    cardTitle: 'AGRI-मित्र Game',
+    cardSub: 'Experience real farming!',
+    aboutTitle: 'More Than Just a Game',
+    description: 'AGRI-मित्र is a journey into the heart of farming. Designed to connect the world with the real life of farmers, it allows players to experience the challenges, decisions, and rewards of agriculture in an engaging and interactive way. From sowing seeds to harvesting crops, managing weather conditions to selecting the best market — step into the shoes of a farmer.',
+    description2: 'Whether you are a farmer, a student, or someone from anywhere around the globe, AGRI-मित्र helps you feel the dedication, strategy, and hard work behind every harvest. The game blends learning with fun, making agriculture exciting, educational, and meaningful.',
+    featuresTitle: 'Game Features',
+    feat_cropLifecycle: 'Crop Lifecycle',
+    feat_cropLifecycle_desc: 'Experience the full journey from sowing to harvesting',
+    feat_weatherMgmt: 'Weather Management',
+    feat_weatherMgmt_desc: 'React to dynamic weather conditions affecting your farm',
+    feat_marketStrategy: 'Market Strategy',
+    feat_marketStrategy_desc: 'Choose the best mandi and timing to sell your produce',
+    feat_villageExplore: 'Village Exploration',
+    feat_villageExplore_desc: 'Explore a beautifully crafted farming village',
+    feat_learnByPlaying: 'Learn by Playing',
+    feat_learnByPlaying_desc: 'Understand real-world farming challenges interactively',
+    imgVillage: 'Village Overview',
+    imgWindmill: 'Windmill & Farmlands',
+    playCTA: 'Play AGRI-मित्र Game',
+    footnote: 'Game assets hosted on Google Drive',
+  },
   /* ── Connectivity ────────────────────────────────────────────── */
   connectivity: {
     noInternet: '📵 No internet connection',

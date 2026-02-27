@@ -25,6 +25,7 @@ const ACTION_CARDS = [
   { icon: 'bell-ring-outline',  color: '#C62828', bg: '#FFEBEE', titleKey: 'home.smartAlerts',    subtitleKey: 'home.smartAlertsSub',    route: 'Alerts' },
   { icon: 'earth',              color: '#795548', bg: '#EFEBE9', titleKey: 'soilHealth.cardTitle', subtitleKey: 'soilHealth.cardSub',     route: 'SoilHealth' },
   { icon: 'handshake',           color: '#1565C0', bg: '#E3F2FD', titleKey: 'deals.cardTitle',     subtitleKey: 'deals.cardSub',          route: 'Deals' },
+  { icon: 'gamepad-variant',     color: '#2E7D32', bg: '#E8F5E9', titleKey: 'game.cardTitle',      subtitleKey: 'game.cardSub',           route: 'AgriMitraGame' },
 ];
 
 export default function HomeScreen({ navigation }) {

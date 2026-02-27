@@ -12,7 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import NetInfo from '@react-native-community/netinfo';
 
-const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.17.16.40:8000';
+const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.203.179.61:8000';
 
 const TOKEN_KEY = '@agrimitra_auth_token';
 const USER_KEY = '@agrimitra_auth_user';
@@ -103,7 +103,14 @@ export function AuthProvider({ children }) {
     return data;
   }, [saveSession]);
 
-  const login = useCallback(async (phone, password) => {
+  const login = useCallback(async (phone, password, options = {}) => {
+    // --- Instant demo login (no backend needed) ---
+    if (options.skipBackend && options.demoUser && options.demoToken) {
+      console.log('[Auth] instant demo login:', options.demoUser.full_name);
+      await saveSession(options.demoToken, options.demoUser);
+      return { access_token: options.demoToken, user: options.demoUser };
+    }
+
     console.log('[Auth] login attempt:', phone, BASE_URL);
 
     // Pre-check connectivity before hitting the server

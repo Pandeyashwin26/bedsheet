@@ -13,7 +13,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, ELEVATION, RADIUS, SPACING, TYPOGRAPHY } from '../theme/colors';
 import { useLanguage } from '../context/LanguageContext';
 
-const BASE_URL = 'http://10.17.16.40:8000';
+const BASE_URL = 'http://10.203.179.61:8000';
 
 const BUYER_TYPES = [
   { id: 'tough_trader', label: 'Tough Trader', icon: 'account-tie', color: '#D32F2F' },

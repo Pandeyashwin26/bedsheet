@@ -15,8 +15,8 @@ export default function LanguageSwitcher({ style, compact = false }) {
   const { language, setLanguage } = useLanguage();
 
   const labels = compact
-    ? { en: 'EN', hi: 'हिं', mr: 'मर' }
-    : { en: 'EN', hi: 'हिंदी', mr: 'मराठी' };
+    ? { en: 'EN', hi: 'हिं', mr: 'मर', gu: 'ગુ' }
+    : { en: 'EN', hi: 'हिंदी', mr: 'मराठी', gu: 'ગુજરાતી' };
 
   return (
     <View style={[styles.container, style]}>

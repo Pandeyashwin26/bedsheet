@@ -9,14 +9,16 @@
 import en from './en';
 import hi from './hi';
 import mr from './mr';
+import gu from './gu';
 
 export const LANGUAGES = [
   { code: 'en', label: 'English',  nativeLabel: 'English'  },
   { code: 'hi', label: 'Hindi',    nativeLabel: 'हिंदी'    },
   { code: 'mr', label: 'Marathi',  nativeLabel: 'मराठी'    },
+  { code: 'gu', label: 'Gujarati', nativeLabel: 'ગુજરાતી' },
 ];
 
-const dictionaries = { en, hi, mr };
+const dictionaries = { en, hi, mr, gu };
 
 /**
  * Resolve a dot-path key from a nested dictionary.

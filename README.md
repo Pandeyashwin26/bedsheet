@@ -274,6 +274,42 @@ The backend provides several endpoints for monitoring:
 
 ---
 
+## 🎮 AGRI-मित्र — The Farming Experience Game
+
+> **Play. Learn. Experience farming like never before.**
+
+AGRI-मित्र is more than just a game — it's a journey into the heart of farming.
+
+Designed to connect the world with the real life of farmers, AGRI-मित्र allows players to experience the challenges, decisions, and rewards of agriculture in an engaging and interactive way. From sowing seeds to harvesting crops, managing weather conditions to selecting the best market, players step into the shoes of a farmer and truly understand what it takes to grow food for the world.
+
+Whether you are a farmer, a student, or someone from anywhere around the globe, AGRI-मित्र helps you feel the dedication, strategy, and hard work behind every harvest. The game blends learning with fun, making agriculture exciting, educational, and meaningful.
+
+### 🌍 Game Screenshots
+
+<p align="center">
+  <img src="https://drive.google.com/uc?export=view&id=1SR6MugM2YwjjgNH9XNZFckvIP-mcc_oT" alt="AGRI-मित्र Game - Village Overview" width="700"/>
+</p>
+
+<p align="center">
+  <img src="https://drive.google.com/uc?export=view&id=1SR6MugM2YwjjgNH9XNZFckvIP-mcc_oT" alt="AGRI-मित्र Game - Windmill & Farmlands" width="700"/>
+</p>
+
+### 🔗 Download & Play
+
+📂 **[Access the AGRI-मित्र Game Assets & Build](https://drive.google.com/drive/folders/1SR6MugM2YwjjgNH9XNZFckvIP-mcc_oT?usp=sharing)**
+
+### 🎯 Game Features
+
+| Feature | Description |
+|---------|-------------|
+| 🌾 **Crop Lifecycle** | Experience the full journey from sowing to harvesting |
+| 🌦️ **Weather Management** | React to dynamic weather conditions affecting your farm |
+| 🏪 **Market Strategy** | Choose the best mandi and timing to sell your produce |
+| 🏘️ **Village Exploration** | Explore a beautifully crafted farming village environment |
+| 📚 **Learn by Playing** | Understand real-world farming challenges interactively |
+
+---
+
 ## 🤝 Contributing
 
 1. Fork the repository

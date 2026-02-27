@@ -35,11 +35,20 @@ export default function LoginScreen({ navigation }) {
 
   const passwordRef = useRef(null);
 
-  // Demo accounts for instant login
+  // Demo accounts for instant login (no backend needed)
   const DEMO_ACCOUNTS = [
-    { phone: '9999900001', password: 'demo123', label: '👨‍🌾 Demo Farmer', color: '#1B5E20' },
-    { phone: '9999900002', password: 'demo123', label: '🧅 Ramesh (Nashik)', color: '#E65100' },
-    { phone: '9999900003', password: 'demo123', label: '🍅 Sunita (Pune)', color: '#B71C1C' },
+    {
+      label: '👨‍🌾 Prem', color: '#1B5E20',
+      user: { id: 1, phone: '9876543001', full_name: 'Prem', district: 'Nashik', state: 'Maharashtra', main_crop: 'onion', farm_size_acres: 5.0, soil_type: 'black', language: 'hi', total_harvests: 12, savings_estimate: 45000, created_at: '2024-06-01T00:00:00' },
+    },
+    {
+      label: '🧑‍💻 Ashwin', color: '#0277BD',
+      user: { id: 3, phone: '9876543003', full_name: 'Ashwin', district: 'Nagpur', state: 'Maharashtra', main_crop: 'wheat', farm_size_acres: 8.0, soil_type: 'alluvial', language: 'en', total_harvests: 8, savings_estimate: 32000, created_at: '2024-07-15T00:00:00' },
+    },
+    {
+      label: '🌾 Bhumi', color: '#B71C1C',
+      user: { id: 2, phone: '9876543002', full_name: 'Bhumi', district: 'Pune', state: 'Maharashtra', main_crop: 'tomato', farm_size_acres: 3.5, soil_type: 'red', language: 'hi', total_harvests: 6, savings_estimate: 28000, created_at: '2024-08-10T00:00:00' },
+    },
   ];
 
   const validate = () => {
@@ -71,13 +80,27 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
-  const handleQuickLogin = async (demoPhone, demoPass, idx) => {
+  const handleQuickLogin = async (account, idx) => {
     setQuickLoading(idx);
     try {
-      await login(demoPhone, demoPass);
+      // Instant offline login — save demo user directly without backend
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const demoToken = 'demo_token_' + account.user.phone;
+      await AsyncStorage.setItem('@agrimitra_auth_token', demoToken);
+      await AsyncStorage.setItem('@agrimitra_auth_user', JSON.stringify(account.user));
+      // Force auth state refresh by calling login with a special flag
+      await login(account.user.phone, 'demo_skip', { skipBackend: true, demoUser: account.user, demoToken });
     } catch (err) {
-      let msg = err?.response?.data?.detail || 'Quick login failed. Is backend running?';
-      Alert.alert('Error', msg);
+      // Fallback: directly set storage and navigate
+      try {
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        const demoToken = 'demo_token_' + account.user.phone;
+        await AsyncStorage.setItem('@agrimitra_auth_token', demoToken);
+        await AsyncStorage.setItem('@agrimitra_auth_user', JSON.stringify(account.user));
+        navigation.replace('MainTabs');
+      } catch (e2) {
+        Alert.alert('Error', 'Quick login failed. Please try manual login.');
+      }
     } finally {
       setQuickLoading(null);
     }
@@ -177,9 +200,9 @@ export default function LoginScreen({ navigation }) {
           <View style={styles.quickLoginRow}>
             {DEMO_ACCOUNTS.map((acc, idx) => (
               <TouchableOpacity
-                key={acc.phone}
+                key={acc.user.phone}
                 style={[styles.quickLoginCard, { borderColor: acc.color }]}
-                onPress={() => handleQuickLogin(acc.phone, acc.password, idx)}
+                onPress={() => handleQuickLogin(acc, idx)}
                 disabled={quickLoading !== null}
                 activeOpacity={0.7}
               >

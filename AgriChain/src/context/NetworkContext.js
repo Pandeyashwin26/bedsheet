@@ -18,7 +18,7 @@ const BACKEND_CHECK_INTERVAL_MS = 30_000;
 // Quick retry after connectivity change
 const BACKEND_QUICK_CHECK_MS = 2_000;
 
-const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.17.16.40:8000';
+const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.203.179.61:8000';
 
 /**
  * NetworkProvider wraps the app and provides:

@@ -34,6 +34,7 @@ import BuyerConnectScreen from './src/screens/BuyerConnectScreen';
 import ColdStorageScreen from './src/screens/ColdStorageScreen';
 import SoilHealthScreen from './src/screens/SoilHealthScreen';
 import DealScreen from './src/screens/DealScreen';
+import AgriMitraGameScreen from './src/screens/AgriMitraGameScreen';
 import { COLORS, ELEVATION } from './src/theme/colors';
 import { setupNotifications, showPermissionResult } from './src/services/notificationService';
 import { AriaProvider } from './src/context/AriaContext';
@@ -185,6 +186,7 @@ function AppNavigator() {
       <Stack.Screen name="ColdStorage" component={ColdStorageScreen} />
       <Stack.Screen name="SoilHealth" component={SoilHealthScreen} />
       <Stack.Screen name="Deals" component={DealScreen} />
+      <Stack.Screen name="AgriMitraGame" component={AgriMitraGameScreen} />
     </Stack.Navigator>
   );
 }

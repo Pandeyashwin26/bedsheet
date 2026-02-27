@@ -19,7 +19,7 @@ import { COLORS, ELEVATION, RADIUS, SPACING, TYPOGRAPHY } from '../theme/colors'
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.17.16.40:8000';
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.203.179.61:8000';
 
 export default function DashboardScreen({ navigation }) {
   const { user, refreshProfile } = useAuth();

@@ -408,10 +408,111 @@ const fetchViaDirect = async ({ uiMessages, context, languageCode }) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Transcribe audio — placeholder for device-local STT.
+ * Transcribe audio using Google Gemini multimodal API.
+ * Reads the recorded audio file, converts to base64, and sends
+ * to Gemini for speech-to-text transcription.
  */
 export const transcribeWithWhisper = async ({ audioUri, languageCode }) => {
-  return '';
+  try {
+    if (!audioUri) {
+      console.warn('[STT] No audioUri provided');
+      return '';
+    }
+
+    const FileSystem = require('expo-file-system');
+
+    // Read audio file as base64
+    const base64Audio = await FileSystem.readAsStringAsync(audioUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    if (!base64Audio || base64Audio.length < 100) {
+      console.warn('[STT] Audio file too small or empty');
+      return '';
+    }
+
+    const langLabel = LANGUAGE_LABELS[languageCode] || languageCode || 'Hindi';
+
+    // ── Strategy 1: Google Gemini multimodal (preferred) ──
+    if (GOOGLE_API_KEY) {
+      try {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_API_KEY}`;
+        const body = {
+          contents: [
+            {
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: 'audio/m4a',
+                    data: base64Audio,
+                  },
+                },
+                {
+                  text: `Transcribe this audio accurately. The speaker is likely speaking in ${langLabel}. Return ONLY the transcribed text, nothing else. If the audio is unclear or silent, return an empty string.`,
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 500,
+          },
+        };
+
+        const response = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const transcript =
+            data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+          console.log('[STT] Gemini transcription:', transcript.substring(0, 80));
+          return transcript;
+        } else {
+          const errText = await response.text();
+          console.warn('[STT] Gemini error:', response.status, errText.substring(0, 200));
+        }
+      } catch (geminiErr) {
+        console.warn('[STT] Gemini STT failed:', geminiErr.message);
+      }
+    }
+
+    // ── Strategy 2: Backend transcription endpoint ──
+    try {
+      const backendUrl = `${BACKEND_URL}/aria/transcribe`;
+      const formData = new FormData();
+      formData.append('audio', {
+        uri: audioUri,
+        type: 'audio/m4a',
+        name: 'recording.m4a',
+      });
+      formData.append('language', languageCode || 'hi');
+
+      const response = await fetch(backendUrl, {
+        method: 'POST',
+        body: formData,
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const transcript = data?.transcript || data?.text || '';
+        console.log('[STT] Backend transcription:', transcript.substring(0, 80));
+        return transcript;
+      }
+    } catch (backendErr) {
+      console.warn('[STT] Backend STT not available:', backendErr.message);
+    }
+
+    console.warn('[STT] All transcription strategies failed');
+    return '';
+  } catch (err) {
+    console.error('[STT] transcribeWithWhisper error:', err);
+    return '';
+  }
 };
 
 /**
